@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (fill, width, height, viewBox, d, stroke, strokeWidth)
+import Svg.Attributes exposing (x, y, fill, width, height, viewBox, d, stroke, strokeWidth)
 import String
 
 
@@ -49,14 +49,17 @@ wave samples cycles =
                 |> List.map toFloat
                 |> List.map
                     (\i ->
-                        (L (i / (toFloat samples)) (sin (cycles * i * pi / (toFloat samples))))
+                        (L
+                            (2 * (i / (toFloat samples)))
+                            (sin (cycles * 2 * i * pi / (toFloat samples)))
+                        )
                     )
            )
 
 
 view msg =
-    svg [ width "500", height "500", viewBox "0 -1 1 2" ]
+    svg [ width "500", height "500", viewBox "0 -1 2 2" ]
         [ path
-            [ fill "none", stroke "chartreuse", strokeWidth "0.01", d (pathDefinition (wave 10 9)) ]
+            [ fill "none", stroke "chartreuse", strokeWidth "0.01", d (pathDefinition (wave 900 1)) ]
             []
         ]
