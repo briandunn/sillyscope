@@ -1,21 +1,25 @@
 module Main exposing (..)
 
+import Json.Decode as Json
 import Browser
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (x, y, fill, width, height, viewBox, d, stroke, strokeWidth)
+import Html exposing (div)
+import Html.Events
+import Svg.Attributes exposing (fill, width, height, viewBox, d, stroke, strokeWidth)
 import String
 
 
+type alias Point =
+    { x : Float, y : Float }
+
+
 main =
-    Browser.sandbox { init = 0, update = update, view = view }
+    Browser.sandbox { init = (Point 0 0), update = update, view = view }
 
 
+update : Point -> Point -> Point
 update msg model =
-    model
-
-
-type alias Model =
-    {}
+    Debug.log "model" msg
 
 
 lineTo x y =
@@ -57,9 +61,27 @@ wave samples cycles =
            )
 
 
-view msg =
-    svg [ width "500", height "500", viewBox "0 -1 2 2" ]
-        [ path
-            [ fill "none", stroke "chartreuse", strokeWidth "0.01", d (pathDefinition (wave 900 1)) ]
-            []
+parsePoint : Json.Decoder Point
+parsePoint =
+    Json.map2 Point
+        (Json.field "clientX" Json.float)
+        (Json.field "clientY" Json.float)
+
+
+onMouseOver point =
+    Html.Events.on "mouseover" parsePoint
+
+
+view : Point -> Html.Html Point
+view model =
+    div [ onMouseOver Point ]
+        [ svg [ width "500", height "500", viewBox "0 -1 2 2" ]
+            [ path
+                [ fill "none"
+                , stroke "chartreuse"
+                , strokeWidth "0.01"
+                , d (pathDefinition (wave (floor model.x) model.y))
+                ]
+                []
+            ]
         ]
