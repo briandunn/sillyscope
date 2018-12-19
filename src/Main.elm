@@ -3,8 +3,8 @@ module Main exposing (..)
 import Json.Decode as Json
 import Browser
 import Svg exposing (path, svg)
-import Html exposing (div)
-import Html.Attributes exposing (style)
+import Html exposing (div, input)
+import Html.Attributes exposing (style, type_)
 import Svg.Attributes exposing (fill, width, height, viewBox, d, stroke, strokeWidth)
 import String
 import Html.Events exposing (onClick, on)
@@ -16,25 +16,33 @@ type alias Point =
 
 
 type alias Model =
-    Set Int
+    { notes : Set Int, zoom : Float }
 
 
 type Action
     = ToggleKey Int
+    | Zoom String
 
 
 main =
-    Browser.sandbox { init = Set.singleton 0, update = update, view = view }
+    Browser.sandbox { init = { notes = Set.singleton 0, zoom = 1 }, update = update, view = view }
 
 
 update : Action -> Model -> Model
 update action model =
     case action of
         ToggleKey i ->
-            if Set.member i model then
-                Set.remove i model
+            if Set.member i model.notes then
+                { model | notes = Set.remove i model.notes }
             else
-                Set.insert i model
+                { model | notes = Set.insert i model.notes }
+
+        Zoom stringValue ->
+            let
+                zoom =
+                    (stringValue |> String.toFloat >> (Maybe.withDefault 0)) / 100.0
+            in
+                { model | zoom = zoom }
 
 
 type PathCommand
@@ -92,18 +100,22 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
-noteWave note color =
+noteWave note color zoom =
     path
         [ fill "none"
         , stroke color
         , strokeWidth "0.01"
-        , d (pathDefinition (wave 500 (3 * (interval note))))
+        , d (pathDefinition (wave 500 (zoom * (interval note))))
         ]
         []
 
 
 
 -- (List.map2 noteWave (Set.toList model) colors)
+
+
+onChange tagger =
+    on "input" (Json.map tagger Html.Events.targetValue)
 
 
 view : Model -> Html.Html Action
@@ -130,12 +142,13 @@ view model =
             [ svg [ width "500", height "500", viewBox "0 -1 2 2" ]
                 (List.indexedMap
                     (\note color ->
-                        if Set.member note model then
-                            noteWave note color
+                        if Set.member note model.notes then
+                            noteWave note color (model.zoom * 5 + 1)
                         else
                             path [] []
                     )
                     colors
                 )
+            , input [ type_ "range", onChange Zoom ] []
             ]
         ]
