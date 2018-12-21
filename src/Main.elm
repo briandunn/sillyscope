@@ -1,4 +1,4 @@
-module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, onChange, pathDefinition, update, view, wave)
+module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
 
 import Browser
 import Html exposing (div, input)
@@ -15,31 +15,60 @@ type alias Model =
     { notes : Set Int, zoom : Float }
 
 
+type alias Point =
+    { x : Float, y : Float }
+
+
+type ZoomAction
+    = ZoomStop
+    | ZoomStart Point
+    | ZoomChange Point
+
+
 type Action
     = ToggleKey Int
-    | Zoom String
+    | Zoom ZoomAction
 
 
 main =
     Browser.sandbox { init = { notes = Set.singleton 0, zoom = 1 }, update = update, view = view }
 
 
+toggle element set =
+    if Set.member element set then
+        Set.remove element set
+
+    else
+        Set.insert element set
+
+
 update : Action -> Model -> Model
 update action model =
     case action of
         ToggleKey i ->
-            if Set.member i model.notes then
-                { model | notes = Set.remove i model.notes }
+            { model | notes = toggle i model.notes }
 
-            else
-                { model | notes = Set.insert i model.notes }
+        Zoom zoom ->
+            case zoom of
+                ZoomStart point ->
+                    model
 
-        Zoom stringValue ->
-            let
-                zoom =
-                    (stringValue |> String.toFloat >> Maybe.withDefault 0) / 100.0
-            in
-            { model | zoom = zoom }
+                ZoomChange point ->
+                    model
+
+                ZoomStop ->
+                    model
+
+
+
+-- Zoom event ->
+--     case event of
+--         Start point ->
+--             Debug.log "start" point && model
+--         Stop ->
+--             Debug.log "stop" 0 && model
+--         Change point ->
+--             Debug.log "change" point && model
 
 
 type PathCommand
@@ -95,10 +124,6 @@ noteWave note color zoom =
         []
 
 
-onChange tagger =
-    on "input" (Json.map tagger Html.Events.targetValue)
-
-
 keyboard notes =
     div
         [ style "flex" "1"
@@ -126,12 +151,49 @@ keyboard notes =
         )
 
 
+parsePoint : (Float -> Float -> a) -> Json.Decoder a
+parsePoint tagger =
+    Json.map2 tagger
+        (Json.field "clientX" Json.float)
+        (Json.field "clientY" Json.float)
+
+
+pointActionTagger : Float -> Float -> Action
+pointActionTagger x y =
+    Zoom (ZoomChange (Point x y))
+
+
+pointToZoom : (Point -> ZoomAction) -> Float -> Float -> Action
+pointToZoom t x y =
+    Zoom (t (Point x y))
+
+
+zoomEvents : List (Html.Attribute Action)
+zoomEvents =
+    [ Html.Events.onMouseLeave (Zoom ZoomStop)
+    , Html.Events.onMouseUp (Zoom ZoomStop)
+    , Html.Events.on "mousemove" (parsePoint (pointToZoom ZoomChange))
+    , Html.Events.on "mousedown" (parsePoint (pointToZoom ZoomStart))
+    ]
+
+
+
+-- zoomEvents =
+--     [ (\_ -> Html.Events.on "mousedown" parsePoint) (Start Point)
+--     -- , Html.Events.on "mousemove" parsePoint
+--     -- , Html.Events.on "mouseleave"
+--     -- , Html.Events.on "mouseup" Zoom Stop
+--     ]
+
+
 view : Model -> Html.Html Action
 view model =
     div [ style "display" "flex" ]
         [ keyboard model.notes
         , div
-            [ style "flex" "4" ]
+            ([ style "flex" "4", style "cursor" "ew-resize" ]
+                ++ zoomEvents
+            )
             [ svg [ width "500", height "500", viewBox "0 -1 2 2" ]
                 (List.indexedMap
                     (\note color ->
@@ -143,6 +205,5 @@ view model =
                     )
                     colors
                 )
-            , input [ type_ "range", onChange Zoom ] []
             ]
         ]
