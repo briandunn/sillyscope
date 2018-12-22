@@ -1,6 +1,7 @@
 module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
 
 import Browser
+import Browser.Dom
 import Html exposing (div, input)
 import Html.Attributes exposing (style, type_)
 import Html.Events exposing (on, onClick)
@@ -9,10 +10,15 @@ import Set exposing (Set)
 import String
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, fill, height, stroke, strokeOpacity, strokeWidth, viewBox, width)
+import Task
 
 
 type alias Model =
-    { notes : Set Int, zoom : Float, zoomStart : Maybe Point }
+    { notes : Set Int
+    , zoom : Float
+    , zoomStart : Maybe Point
+    , scene : { width : Float, height : Float }
+    }
 
 
 type alias Point =
@@ -28,13 +34,25 @@ type ZoomAction
 type Action
     = ToggleKey Int
     | Zoom ZoomAction
+    | ViewportChange Browser.Dom.Viewport
+
+
+init () =
+    ( { notes = Set.singleton 0, zoom = 1, zoomStart = Nothing, scene = { width = 0, height = 0 } }
+    , Task.perform ViewportChange Browser.Dom.getViewport
+    )
+
+
+subscriptions model =
+    Sub.none
 
 
 main =
-    Browser.sandbox
-        { init = { notes = Set.singleton 0, zoom = 1, zoomStart = Nothing }
+    Browser.element
+        { init = init
         , update = update
         , view = view
+        , subscriptions = subscriptions
         }
 
 
@@ -46,11 +64,14 @@ toggle element set =
         Set.insert element set
 
 
-update : Action -> Model -> Model
+update : Action -> Model -> ( Model, Cmd Action )
 update action model =
-    case action of
+    ( case action of
         ToggleKey i ->
             { model | notes = toggle i model.notes }
+
+        ViewportChange viewPort ->
+            { model | scene = viewPort.scene }
 
         Zoom zoom ->
             case zoom of
@@ -63,10 +84,12 @@ update action model =
                             model
 
                         Just start ->
-                            { model | zoom = abs (point.x - start.x) / 500.0 }
+                            { model | zoom = abs (point.x - start.x) / model.scene.width }
 
                 ZoomStop ->
                     { model | zoomStart = Nothing }
+    , Cmd.none
+    )
 
 
 type PathCommand
@@ -93,17 +116,17 @@ pathDefinition commands =
     commands |> List.map commandToString |> String.join " "
 
 
-wave : Int -> Float -> List PathCommand
+wave : Float -> Float -> List PathCommand
 wave samples cycles =
     M { x = 0, y = 0 }
-        :: (List.range 0 samples
+        :: (List.range 0 (round samples)
                 |> List.map toFloat
                 |> List.map
                     (\i ->
                         L
-                            { x = 2 * (i / toFloat samples)
+                            { x = 2 * (i / samples)
                             , y =
-                                if sin (cycles * 2 * i * pi / toFloat samples) < 0 then
+                                if sin (cycles * 2 * i * pi / samples) < 0 then
                                     -1.0
 
                                 else
@@ -122,13 +145,13 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
-noteWave note color zoom =
+noteWave note color zoom svgWidth =
     path
         [ fill "none"
         , stroke color
-        , strokeOpacity "0.7"
+        , strokeOpacity "0.5"
         , strokeWidth "0.03"
-        , d (pathDefinition (wave 500 (zoom * interval note)))
+        , d (pathDefinition (wave svgWidth (zoom * interval note)))
         ]
         []
 
@@ -199,17 +222,21 @@ zoomEvents =
 
 view : Model -> Html.Html Action
 view model =
+    let
+        svgWidth =
+            model.scene.width * (4 / 5)
+    in
     div [ style "display" "flex" ]
         [ keyboard model.notes
         , div
             ([ style "flex" "4", style "cursor" "ew-resize" ]
                 ++ zoomEvents
             )
-            [ svg [ width "500", height "500", viewBox "0 -1 2 2" ]
+            [ svg [ width (String.fromFloat svgWidth), height (String.fromFloat model.scene.height), viewBox "0 -1 2 2" ]
                 (List.indexedMap
                     (\note color ->
                         if Set.member note model.notes then
-                            noteWave note color (model.zoom * 5 + 1)
+                            noteWave note color (model.zoom * 5 + 1) svgWidth
 
                         else
                             path [] []
