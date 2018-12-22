@@ -102,7 +102,12 @@ wave samples cycles =
                     (\i ->
                         L
                             { x = 2 * (i / toFloat samples)
-                            , y = sin (cycles * 2 * i * pi / toFloat samples)
+                            , y =
+                                if sin (cycles * 2 * i * pi / toFloat samples) < 0 then
+                                    -1.0
+
+                                else
+                                    1
                             }
                     )
            )
