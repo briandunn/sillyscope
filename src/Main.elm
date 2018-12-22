@@ -38,7 +38,7 @@ type Action
 
 
 init () =
-    ( { notes = Set.singleton 0, zoom = 1, zoomStart = Nothing, scene = { width = 0, height = 0 } }
+    ( { notes = Set.singleton 0, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
     , Task.perform ViewportChange Browser.Dom.getViewport
     )
 
@@ -84,7 +84,7 @@ update action model =
                             model
 
                         Just start ->
-                            { model | zoom = abs (point.x - start.x) / model.scene.width }
+                            { model | zoom = (point.x - start.x) / model.scene.width }
 
                 ZoomStop ->
                     { model | zoomStart = Nothing }
@@ -224,7 +224,7 @@ view : Model -> Html.Html Action
 view model =
     let
         svgWidth =
-            model.scene.width * (4 / 5)
+            model.scene.height
     in
     div [ style "display" "flex" ]
         [ keyboard model.notes
@@ -236,7 +236,7 @@ view model =
                 (List.indexedMap
                     (\note color ->
                         if Set.member note model.notes then
-                            noteWave note color (model.zoom * 5 + 1) svgWidth
+                            noteWave note color (model.zoom * 10) svgWidth
 
                         else
                             path [] []
