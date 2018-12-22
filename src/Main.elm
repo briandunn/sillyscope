@@ -8,7 +8,7 @@ import Json.Decode as Json
 import Set exposing (Set)
 import String
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (d, fill, height, stroke, strokeWidth, viewBox, width)
+import Svg.Attributes exposing (d, fill, height, stroke, strokeOpacity, strokeWidth, viewBox, width)
 
 
 type alias Model =
@@ -126,6 +126,7 @@ noteWave note color zoom =
     path
         [ fill "none"
         , stroke color
+        , strokeOpacity "0.7"
         , strokeWidth "0.03"
         , d (pathDefinition (wave 500 (zoom * interval note)))
         ]
