@@ -133,6 +133,10 @@ noteWave note color zoom =
 
 
 keyboard notes =
+    let
+        isSharp i =
+            [ 1, 3, 6, 8, 10 ] |> Set.fromList |> Set.member i
+    in
     div
         [ style "flex" "1"
         , style "display" "flex"
@@ -145,6 +149,13 @@ keyboard notes =
                         [ style "background-color" color
                         , style "flex" "1"
                         , style "margin" "2px"
+                        , style "width"
+                            (if isSharp i then
+                                "50%"
+
+                             else
+                                "auto"
+                            )
                         , style "box-shadow"
                             (if Set.member i notes then
                                 "unset"
@@ -156,6 +167,7 @@ keyboard notes =
                         ]
                         []
                 )
+            |> List.reverse
         )
 
 
