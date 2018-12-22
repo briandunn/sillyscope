@@ -12,7 +12,7 @@ import Svg.Attributes exposing (d, fill, height, stroke, strokeWidth, viewBox, w
 
 
 type alias Model =
-    { notes : Set Int, zoom : Float }
+    { notes : Set Int, zoom : Float, zoomStart : Maybe Point }
 
 
 type alias Point =
@@ -31,7 +31,11 @@ type Action
 
 
 main =
-    Browser.sandbox { init = { notes = Set.singleton 0, zoom = 1 }, update = update, view = view }
+    Browser.sandbox
+        { init = { notes = Set.singleton 0, zoom = 1, zoomStart = Nothing }
+        , update = update
+        , view = view
+        }
 
 
 toggle element set =
@@ -51,39 +55,37 @@ update action model =
         Zoom zoom ->
             case zoom of
                 ZoomStart point ->
-                    model
+                    { model | zoomStart = Just point }
 
                 ZoomChange point ->
-                    model
+                    case model.zoomStart of
+                        Nothing ->
+                            model
+
+                        Just start ->
+                            { model | zoom = abs (point.x - start.x) / 500.0 }
 
                 ZoomStop ->
-                    model
-
-
-
--- Zoom event ->
---     case event of
---         Start point ->
---             Debug.log "start" point && model
---         Stop ->
---             Debug.log "stop" 0 && model
---         Change point ->
---             Debug.log "change" point && model
+                    { model | zoomStart = Nothing }
 
 
 type PathCommand
-    = M Float Float
-    | L Float Float
+    = M Point
+    | L Point
 
 
 commandToString : PathCommand -> String
 commandToString command =
+    let
+        toString c p =
+            c ++ String.join "," (List.map String.fromFloat [ p.x, p.y ])
+    in
     case command of
-        M x y ->
-            "M" ++ String.fromFloat x ++ "," ++ String.fromFloat y
+        M p ->
+            toString "M" p
 
-        L x y ->
-            "L" ++ String.fromFloat x ++ "," ++ String.fromFloat y
+        L p ->
+            toString "L" p
 
 
 pathDefinition : List PathCommand -> String
@@ -93,14 +95,15 @@ pathDefinition commands =
 
 wave : Int -> Float -> List PathCommand
 wave samples cycles =
-    M 0 0
+    M { x = 0, y = 0 }
         :: (List.range 0 samples
                 |> List.map toFloat
                 |> List.map
                     (\i ->
                         L
-                            (2 * (i / toFloat samples))
-                            (sin (cycles * 2 * i * pi / toFloat samples))
+                            { x = 2 * (i / toFloat samples)
+                            , y = sin (cycles * 2 * i * pi / toFloat samples)
+                            }
                     )
            )
 
@@ -158,32 +161,22 @@ parsePoint tagger =
         (Json.field "clientY" Json.float)
 
 
-pointActionTagger : Float -> Float -> Action
-pointActionTagger x y =
-    Zoom (ZoomChange (Point x y))
-
-
 pointToZoom : (Point -> ZoomAction) -> Float -> Float -> Action
 pointToZoom t x y =
-    Zoom (t (Point x y))
+    Point x y |> t >> Zoom
+
+
+parseZoom =
+    pointToZoom >> parsePoint
 
 
 zoomEvents : List (Html.Attribute Action)
 zoomEvents =
     [ Html.Events.onMouseLeave (Zoom ZoomStop)
     , Html.Events.onMouseUp (Zoom ZoomStop)
-    , Html.Events.on "mousemove" (parsePoint (pointToZoom ZoomChange))
-    , Html.Events.on "mousedown" (parsePoint (pointToZoom ZoomStart))
+    , Html.Events.on "mousemove" (parseZoom ZoomChange)
+    , Html.Events.on "mousedown" (parseZoom ZoomStart)
     ]
-
-
-
--- zoomEvents =
---     [ (\_ -> Html.Events.on "mousedown" parsePoint) (Start Point)
---     -- , Html.Events.on "mousemove" parsePoint
---     -- , Html.Events.on "mouseleave"
---     -- , Html.Events.on "mouseup" Zoom Stop
---     ]
 
 
 view : Model -> Html.Html Action
