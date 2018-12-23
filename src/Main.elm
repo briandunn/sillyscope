@@ -3,6 +3,7 @@ port module Main exposing (Action(..), Model, PathCommand(..), colors, commandTo
 import Browser
 import Browser.Dom
 import Browser.Events
+import Dict exposing (Dict)
 import Html exposing (div, input)
 import Html.Attributes exposing (style, type_)
 import Html.Events exposing (on, onClick)
@@ -15,8 +16,13 @@ import Svg.Attributes exposing (d, fill, height, stroke, strokeOpacity, strokeWi
 import Task
 
 
+type alias Note =
+    { id : Int, frequency : Float, attack : Float, node : Json.Value }
+
+
 type alias Model =
     { notes : Set Int
+    , oscs : Dict Int Note
     , zoom : Float
     , zoomStart : Maybe Point
     , scene : { width : Float, height : Float }
@@ -46,6 +52,8 @@ type Action
     = ToggleKey Int
     | Zoom ZoomAction
     | Viewport ViewportAction
+    | Waveform Json.Encode.Value
+    | NotePressed Json.Encode.Value
 
 
 port noteRelease : Json.Value -> Cmd msg
@@ -54,16 +62,26 @@ port noteRelease : Json.Value -> Cmd msg
 port notePress : Json.Value -> Cmd msg
 
 
+port notePressed : (Json.Encode.Value -> msg) -> Sub msg
+
+
+port waveform : (Json.Encode.Value -> msg) -> Sub msg
+
+
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Set.singleton 0, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
+    ( { notes = Set.empty, oscs = Dict.empty, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
     , Task.perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
 
 subscriptions : Model -> Sub Action
 subscriptions model =
-    Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
+    Sub.batch
+        [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
+        , waveform Waveform
+        , notePressed NotePressed
+        ]
 
 
 main =
@@ -75,12 +93,37 @@ main =
         }
 
 
-noteToCommand n f =
-   let
-    freq = (n + 3) |> interval |> (*) 220
-    json = Json.Encode.object [ ("frequency", Json.Encode.float freq), ("attack", Json.Encode.float 0.1)]
+buildNoteCommand n =
+    let
+        freq =
+            (n + 3) |> interval |> (*) 220
+
+        json =
+            Json.Encode.object
+                [ ( "id", Json.Encode.int n )
+                , ( "frequency", Json.Encode.float freq )
+                , ( "attack", Json.Encode.float 0.1 )
+                ]
     in
-      json  |> f
+    json |> notePress
+
+
+buildReleaseCommand maybeOsc =
+    case maybeOsc of
+        Just osc ->
+            [ ( "attack", Json.Encode.float osc.attack ), ( "node", osc.node ) ] |> Json.Encode.object |> noteRelease
+
+        Nothing ->
+            Cmd.none
+
+
+decodeNote : Json.Value -> Result Json.Error Note
+decodeNote note =
+    let
+        decoder =
+            Json.map4 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value)
+    in
+    note |> Json.decodeValue decoder
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -88,10 +131,25 @@ update action model =
     case action of
         ToggleKey i ->
             if Set.member i model.notes then
-                ( { model | notes = Set.remove i model.notes }, noteToCommand i noteRelease )
+                ( { model | notes = Set.remove i model.notes }, model.oscs |> Dict.get i |> buildReleaseCommand )
 
             else
-                ( { model | notes = Set.insert i model.notes }, noteToCommand i notePress )
+                ( { model | notes = Set.insert i model.notes }, buildNoteCommand i )
+
+        Waveform form ->
+            let
+                x =
+                    Debug.log "waveform" form
+            in
+            ( model, Cmd.none )
+
+        NotePressed note ->
+            case decodeNote note of
+                Ok o ->
+                    ( { model | oscs = Dict.insert o.id o model.oscs }, Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         Viewport viewPortAction ->
             ( case viewPortAction of
