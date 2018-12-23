@@ -253,17 +253,20 @@ noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
 noteWave color zoom svgWidth note =
     let
         xDelta =
-            svgWidth / (note.waveform |> Array.length |> toFloat)
+            (note.waveform |> Array.length |> toFloat) / svgWidth
 
         lines =
             note.waveform |> Array.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v }) |> Array.toList
+
+        initial =
+            note.waveform |> Array.get 0 |> Maybe.withDefault 0
     in
     path
         [ fill "none"
         , stroke color
         , strokeOpacity "0.5"
         , strokeWidth "0.03"
-        , M { x = 0, y = 0 } :: lines |> pathDefinition |> d
+        , M { x = 0, y = initial } :: lines |> pathDefinition |> d
         ]
         []
 

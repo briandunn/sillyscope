@@ -24,7 +24,7 @@ function notePress({ id, frequency, attack }) {
     if (!analyserStopped)
       setTimeout(
         broadcastWaveform,
-        (waveform.length / context.sampleRate) * 1000
+        waveform.length / context.sampleRate / 1000
       );
     analyser.getFloatTimeDomainData(waveform);
     const skip = 16;
