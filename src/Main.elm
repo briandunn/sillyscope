@@ -146,7 +146,7 @@ update action model =
 
                 updateNote : Array Float -> Maybe Note -> Maybe Note
                 updateNote wf note =
-                  Maybe.map (\n -> {n | waveform = wf } ) note
+                    Maybe.map (\n -> { n | waveform = wf }) note
               in
               case decodedWaveform of
                 Ok wf ->
@@ -249,13 +249,21 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
-noteWave note color zoom svgWidth =
+noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
+noteWave color zoom svgWidth note =
+    let
+        xDelta =
+            svgWidth / (note.waveform |> Array.length |> toFloat)
+
+        lines =
+            note.waveform |> Array.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v }) |> Array.toList
+    in
     path
         [ fill "none"
         , stroke color
         , strokeOpacity "0.5"
         , strokeWidth "0.03"
-        , d (pathDefinition (wave svgWidth (zoom * interval note)))
+        , M { x = 0, y = 0 } :: lines |> pathDefinition |> d
         ]
         []
 
@@ -349,12 +357,13 @@ view model =
                 , viewBox "0 -1 2 2"
                 ]
                 (List.indexedMap
-                    (\note color ->
-                        if Set.member note noteIds then
-                            noteWave note color (model.zoom * 10) svgWidth
+                    (\noteId color ->
+                        case Dict.get noteId model.notes of
+                            Just note ->
+                                noteWave color (model.zoom * 10) svgWidth note
 
-                        else
-                            path [] []
+                            Nothing ->
+                                path [] []
                     )
                     colors
                 )
