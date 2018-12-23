@@ -21,8 +21,7 @@ type alias Note =
 
 
 type alias Model =
-    { notes : Set Int
-    , oscs : Dict Int Note
+    { notes : Dict Int Note
     , zoom : Float
     , zoomStart : Maybe Point
     , scene : { width : Float, height : Float }
@@ -70,7 +69,7 @@ port waveform : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Set.empty, oscs = Dict.empty, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
+    ( { notes = Dict.empty, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
     , Task.perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -108,13 +107,8 @@ buildNoteCommand n =
     json |> notePress
 
 
-buildReleaseCommand maybeOsc =
-    case maybeOsc of
-        Just osc ->
-            [ ( "attack", Json.Encode.float osc.attack ), ( "node", osc.node ) ] |> Json.Encode.object |> noteRelease
-
-        Nothing ->
-            Cmd.none
+buildReleaseCommand note =
+    [ ( "attack", Json.Encode.float note.attack ), ( "node", note.node ) ] |> Json.Encode.object |> noteRelease
 
 
 decodeNote : Json.Value -> Result Json.Error Note
@@ -130,11 +124,12 @@ update : Action -> Model -> ( Model, Cmd Action )
 update action model =
     case action of
         ToggleKey i ->
-            if Set.member i model.notes then
-                ( { model | notes = Set.remove i model.notes }, model.oscs |> Dict.get i |> buildReleaseCommand )
+            case Dict.get i model.notes of
+                Just note ->
+                    ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand note )
 
-            else
-                ( { model | notes = Set.insert i model.notes }, buildNoteCommand i )
+                Nothing ->
+                    ( model, buildNoteCommand i )
 
         Waveform form ->
             let
@@ -144,12 +139,14 @@ update action model =
             ( model, Cmd.none )
 
         NotePressed note ->
-            case decodeNote note of
+            ( case decodeNote note of
                 Ok o ->
-                    ( { model | oscs = Dict.insert o.id o model.oscs }, Cmd.none )
+                    { model | notes = Dict.insert o.id o model.notes }
 
                 Err _ ->
-                    ( model, Cmd.none )
+                    model
+            , Cmd.none
+            )
 
         Viewport viewPortAction ->
             ( case viewPortAction of
@@ -313,13 +310,16 @@ view model =
     let
         svgWidth =
             model.scene.height
+
+        noteIds =
+            model.notes |> Dict.keys |> Set.fromList
     in
     div
         [ style "display" "flex"
         , style "height" (String.fromFloat model.scene.height)
         , style "margin" "20px"
         ]
-        [ keyboard model.notes
+        [ keyboard noteIds
         , div
             ([ style "flex" "4", style "cursor" "ew-resize" ]
                 ++ zoomEvents
@@ -331,7 +331,7 @@ view model =
                 ]
                 (List.indexedMap
                     (\note color ->
-                        if Set.member note model.notes then
+                        if Set.member note noteIds then
                             noteWave note color (model.zoom * 10) svgWidth
 
                         else

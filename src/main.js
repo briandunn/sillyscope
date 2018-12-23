@@ -19,13 +19,7 @@ function notePress({ id, frequency, attack }) {
   osc.start(0);
 }
 
-function noteRelease(args) {
-  console.log(args);
-
-  const {
-    attack,
-    node: { gain },
-  } = args;
+function noteRelease({ attack, node: { gain } }) {
   if (gain) {
     gain.gain.linearRampToValueAtTime(0, context.currentTime + attack);
     setTimeout(() => {
