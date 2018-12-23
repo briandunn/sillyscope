@@ -1,4 +1,4 @@
-module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
+port module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
 
 import Browser
 import Browser.Dom
@@ -7,6 +7,7 @@ import Html exposing (div, input)
 import Html.Attributes exposing (style, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
+import Json.Encode
 import Set exposing (Set)
 import String
 import Svg exposing (path, svg)
@@ -47,6 +48,12 @@ type Action
     | Viewport ViewportAction
 
 
+port noteRelease : Json.Value -> Cmd msg
+
+
+port notePress : Json.Value -> Cmd msg
+
+
 init : () -> ( Model, Cmd Action )
 init () =
     ( { notes = Set.singleton 0, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
@@ -68,30 +75,32 @@ main =
         }
 
 
-toggle element set =
-    if Set.member element set then
-        Set.remove element set
-
-    else
-        Set.insert element set
+noteToCommand n f =
+    n |> interval |> (*) 440 |> Json.Encode.float |> f
 
 
 update : Action -> Model -> ( Model, Cmd Action )
 update action model =
-    ( case action of
+    case action of
         ToggleKey i ->
-            { model | notes = toggle i model.notes }
+            if Set.member i model.notes then
+                ( { model | notes = Set.remove i model.notes }, noteToCommand i noteRelease )
+
+            else
+                ( { model | notes = Set.insert i model.notes }, noteToCommand i notePress )
 
         Viewport viewPortAction ->
-            case viewPortAction of
+            ( case viewPortAction of
                 ViewportSet viewPort ->
                     { model | scene = viewPort.scene }
 
                 ViewportChange viewPort ->
                     { model | scene = { width = toFloat viewPort.width, height = toFloat viewPort.height } }
+            , Cmd.none
+            )
 
         Zoom zoom ->
-            case zoom of
+            ( case zoom of
                 ZoomStart point ->
                     { model | zoomStart = Just point }
 
@@ -105,8 +114,8 @@ update action model =
 
                 ZoomStop ->
                     { model | zoomStart = Nothing }
-    , Cmd.none
-    )
+            , Cmd.none
+            )
 
 
 type PathCommand
