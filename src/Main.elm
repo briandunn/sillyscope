@@ -2,6 +2,7 @@ module Main exposing (Action(..), Model, PathCommand(..), colors, commandToStrin
 
 import Browser
 import Browser.Dom
+import Browser.Events
 import Html exposing (div, input)
 import Html.Attributes exposing (style, type_)
 import Html.Events exposing (on, onClick)
@@ -25,6 +26,15 @@ type alias Point =
     { x : Float, y : Float }
 
 
+type alias WidthHeight =
+    { width : Int, height : Int }
+
+
+type ViewportAction
+    = ViewportChange WidthHeight
+    | ViewportSet Browser.Dom.Viewport
+
+
 type ZoomAction
     = ZoomStop
     | ZoomStart Point
@@ -34,17 +44,19 @@ type ZoomAction
 type Action
     = ToggleKey Int
     | Zoom ZoomAction
-    | ViewportChange Browser.Dom.Viewport
+    | Viewport ViewportAction
 
 
+init : () -> ( Model, Cmd Action )
 init () =
     ( { notes = Set.singleton 0, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
-    , Task.perform ViewportChange Browser.Dom.getViewport
+    , Task.perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
 
+subscriptions : Model -> Sub Action
 subscriptions model =
-    Sub.none
+    Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
 
 
 main =
@@ -70,8 +82,13 @@ update action model =
         ToggleKey i ->
             { model | notes = toggle i model.notes }
 
-        ViewportChange viewPort ->
-            { model | scene = viewPort.scene }
+        Viewport viewPortAction ->
+            case viewPortAction of
+                ViewportSet viewPort ->
+                    { model | scene = viewPort.scene }
+
+                ViewportChange viewPort ->
+                    { model | scene = { width = toFloat viewPort.width, height = toFloat viewPort.height } }
 
         Zoom zoom ->
             case zoom of
@@ -226,13 +243,21 @@ view model =
         svgWidth =
             model.scene.height
     in
-    div [ style "display" "flex" ]
+    div
+        [ style "display" "flex"
+        , style "height" (String.fromFloat model.scene.height)
+        , style "margin" "20px"
+        ]
         [ keyboard model.notes
         , div
             ([ style "flex" "4", style "cursor" "ew-resize" ]
                 ++ zoomEvents
             )
-            [ svg [ width (String.fromFloat svgWidth), height (String.fromFloat model.scene.height), viewBox "0 -1 2 2" ]
+            [ svg
+                [ width (String.fromFloat svgWidth)
+                , height (String.fromFloat (model.scene.height - 40))
+                , viewBox "0 -1 2 2"
+                ]
                 (List.indexedMap
                     (\note color ->
                         if Set.member note model.notes then
