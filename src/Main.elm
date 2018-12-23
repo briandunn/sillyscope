@@ -1,5 +1,6 @@
 port module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
 
+import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -17,7 +18,7 @@ import Task
 
 
 type alias Note =
-    { id : Int, frequency : Float, attack : Float, node : Json.Value }
+    { id : Int, frequency : Float, attack : Float, node : Json.Value, waveform : Array Float }
 
 
 type alias Model =
@@ -115,9 +116,13 @@ decodeNote : Json.Value -> Result Json.Error Note
 decodeNote note =
     let
         decoder =
-            Json.map4 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value)
+            Json.map5 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed Array.empty)
     in
     note |> Json.decodeValue decoder
+
+
+type alias WaveformMessage =
+    { id : Int, waveform : Array Float }
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -132,11 +137,25 @@ update action model =
                     ( model, buildNoteCommand i )
 
         Waveform form ->
-            let
-                x =
-                    Debug.log "waveform" form
-            in
-            ( model, Cmd.none )
+            ( let
+                decoder =
+                    Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.array Json.float))
+
+                decodedWaveform =
+                    Json.decodeValue decoder form
+
+                updateNote : Array Float -> Maybe Note -> Maybe Note
+                updateNote wf note =
+                  Maybe.map (\n -> {n | waveform = wf } ) note
+              in
+              case decodedWaveform of
+                Ok wf ->
+                    { model | notes = Dict.update wf.id (updateNote wf.waveform) model.notes }
+
+                Err _ ->
+                    model
+            , Cmd.none
+            )
 
         NotePressed note ->
             ( case decodeNote note of
