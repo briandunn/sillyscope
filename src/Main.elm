@@ -253,10 +253,10 @@ noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
 noteWave color zoom svgWidth note =
     let
         xDelta =
-            (note.waveform |> Array.length |> toFloat) / svgWidth
+            2 / svgWidth
 
         lines =
-            note.waveform |> Array.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v }) |> Array.toList
+            note.waveform |> Array.slice 0 (round svgWidth) |> Array.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v }) |> Array.toList
 
         initial =
             note.waveform |> Array.get 0 |> Maybe.withDefault 0

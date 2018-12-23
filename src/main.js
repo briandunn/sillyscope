@@ -10,7 +10,7 @@ function notePress({ id, frequency, attack }) {
   const osc = context.createOscillator();
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  analyser.fftSize = 32768;
+  analyser.fftSize = 2048;
   const waveform = new Float32Array(analyser.frequencyBinCount);
   osc.connect(gain);
   osc.frequency.value = frequency;
@@ -27,14 +27,14 @@ function notePress({ id, frequency, attack }) {
         waveform.length / context.sampleRate / 1000
       );
     analyser.getFloatTimeDomainData(waveform);
-    const skip = 16;
     const waveformArray = Array.from(waveform);
-    const samples = [];
-    for (var i = 0; i < analyser.frequencyBinCount; i += skip) {
-      const sample = waveformArray[i];
-      if (sample) samples.push(sample);
-    }
-    app.ports.waveform.send({ waveform: samples, id });
+    // const skip = 32;
+    // const samples = [];
+    // for (var i = 0; i < analyser.frequencyBinCount; i += skip) {
+    //   const sample = waveformArray[i];
+    //   if (sample) samples.push(sample);
+    // }
+    app.ports.waveform.send({ waveform: waveformArray, id });
   }
   broadcastWaveform();
 
