@@ -76,7 +76,11 @@ main =
 
 
 noteToCommand n f =
-    n |> interval |> (*) 440 |> Json.Encode.float |> f
+   let
+    freq = (n + 3) |> interval |> (*) 220
+    json = Json.Encode.object [ ("frequency", Json.Encode.float freq), ("attack", Json.Encode.float 0.1)]
+    in
+      json  |> f
 
 
 update : Action -> Model -> ( Model, Cmd Action )
