@@ -249,6 +249,37 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
+
+-- fast forward until the mgnitude is going down
+-- fast forward until the magnitude starts going up again
+
+
+dropWhileFirstTwo test list =
+    case list of
+        first :: second :: tail ->
+            if test first second then
+                dropWhileFirstTwo test (second :: tail)
+
+            else
+                list
+
+        first :: tail ->
+            list
+
+        [] ->
+            []
+
+
+dropToLocalMinimum : List Float -> List Float
+dropToLocalMinimum values =
+    values
+        |> dropWhileFirstTwo (>)
+        |> List.drop 1
+        |> dropWhileFirstTwo (<)
+        |> List.drop 1
+
+
+
 noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
 noteWave color zoom svgWidth note =
     let
@@ -256,7 +287,11 @@ noteWave color zoom svgWidth note =
             2 / svgWidth
 
         lines =
-            note.waveform |> Array.slice 0 (round svgWidth) |> Array.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v }) |> Array.toList
+            note.waveform
+                |> Array.toList
+                |> dropToLocalMinimum
+                |> List.take (round svgWidth)
+                |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v })
 
         initial =
             note.waveform |> Array.get 0 |> Maybe.withDefault 0

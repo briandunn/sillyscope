@@ -20,20 +20,11 @@ function notePress({ id, frequency, attack }) {
   osc.connect(analyser);
   osc.start(0);
   let analyserStopped = false;
+
   function broadcastWaveform() {
-    if (!analyserStopped)
-      setTimeout(
-        broadcastWaveform,
-        waveform.length / context.sampleRate / 1000
-      );
+    if (!analyserStopped) requestAnimationFrame(broadcastWaveform);
     analyser.getFloatTimeDomainData(waveform);
     const waveformArray = Array.from(waveform);
-    // const skip = 32;
-    // const samples = [];
-    // for (var i = 0; i < analyser.frequencyBinCount; i += skip) {
-    //   const sample = waveformArray[i];
-    //   if (sample) samples.push(sample);
-    // }
     app.ports.waveform.send({ waveform: waveformArray, id });
   }
   broadcastWaveform();
