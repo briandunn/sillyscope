@@ -70,7 +70,7 @@ port waveform : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 0.5, zoomStart = Nothing, scene = { width = 1, height = 1 } }
+    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 } }
     , Task.perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -249,11 +249,6 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
-
--- fast forward until the mgnitude is going down
--- fast forward until the magnitude starts going up again
-
-
 dropWhileFirstTwo test list =
     case list of
         first :: second :: tail ->
@@ -279,12 +274,11 @@ dropToLocalMinimum values =
         |> List.drop 1
 
 
-
 noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
 noteWave color zoom svgWidth note =
     let
         xDelta =
-            2 / svgWidth
+            (2 * zoom) / svgWidth
 
         lines =
             note.waveform

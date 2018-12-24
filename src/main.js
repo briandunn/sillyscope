@@ -6,11 +6,10 @@ const app = Elm.Main.init({
   node: document.querySelector('main'),
 });
 
-function notePress({ id, frequency, attack }) {
+function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  analyser.fftSize = 2048;
   const waveform = new Float32Array(analyser.frequencyBinCount);
   osc.connect(gain);
   osc.frequency.value = frequency;
@@ -18,6 +17,8 @@ function notePress({ id, frequency, attack }) {
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
   gain.connect(context.destination);
   osc.connect(analyser);
+  //TODO:
+  // osc.type = type;
   osc.start(0);
   let analyserStopped = false;
 
