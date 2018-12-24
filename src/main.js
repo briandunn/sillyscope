@@ -17,8 +17,7 @@ function notePress({ id, frequency, attack, type }) {
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
   gain.connect(context.destination);
   osc.connect(analyser);
-  //TODO:
-  // osc.type = type;
+  osc.type = type;
   osc.start(0);
   let analyserStopped = false;
 

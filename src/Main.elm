@@ -1,4 +1,4 @@
-port module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view, wave)
+port module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view)
 
 import Array exposing (Array)
 import Browser
@@ -95,6 +95,7 @@ main =
 
 buildNoteCommand n =
     let
+        -- middle c
         freq =
             (n + 3) |> interval |> (*) 220
 
@@ -103,6 +104,7 @@ buildNoteCommand n =
                 [ ( "id", Json.Encode.int n )
                 , ( "frequency", Json.Encode.float freq )
                 , ( "attack", Json.Encode.float 0.1 )
+                , ( "type", Json.Encode.string "sine" )
                 ]
     in
     json |> notePress
@@ -218,26 +220,6 @@ commandToString command =
 pathDefinition : List PathCommand -> String
 pathDefinition commands =
     commands |> List.map commandToString |> String.join " "
-
-
-wave : Float -> Float -> List PathCommand
-wave samples cycles =
-    M { x = 0, y = 0 }
-        :: (List.range 0 (round samples)
-                |> List.map toFloat
-                |> List.map
-                    (\i ->
-                        L
-                            { x = 2 * (i / samples)
-                            , y =
-                                if sin (cycles * 2 * i * pi / samples) < 0 then
-                                    -1.0
-
-                                else
-                                    1
-                            }
-                    )
-           )
 
 
 interval : Int -> Float
