@@ -239,20 +239,28 @@ update action model =
 type PathCommand
     = M Point
     | L Point
+    | Q Point Point (List Point)
+    | C Point Point Point (List Point)
 
 
 commandToString : PathCommand -> String
 commandToString command =
     let
-        toString c p =
-            c ++ String.join "," (List.map String.fromFloat [ p.x, p.y ])
+        toString p =
+            String.join "," (List.map String.fromFloat [ p.x, p.y ])
     in
     case command of
         M p ->
-            toString "M" p
+            "M " ++ toString p
 
         L p ->
-            toString "L" p
+            "L " ++ toString p
+
+        Q p1 p2 l ->
+            "Q " ++ (p1 :: p2 :: l |> List.map toString |> String.join " ")
+
+        C p1 p2 p3 l ->
+            "Q " ++ (p1 :: p2 :: p3 :: l |> List.map toString |> String.join " ")
 
 
 pathDefinition : List PathCommand -> String
@@ -286,7 +294,6 @@ dropWhileFirstTwo test list =
 
 
 dropToLocalMinimum : List Float -> List Float
-
 dropToLocalMinimum values =
     values
         |> dropWhileFirstTwo (\a b -> (a > 0 && b > 0) || (a <= 0 && b <= 0))
@@ -300,15 +307,16 @@ noteWave color zoom svgWidth note =
         xDelta =
             (2 * zoom) / svgWidth
 
-        lines =
+        values =
             note.waveform
                 |> Array.toList
                 |> dropToLocalMinimum
                 |> List.take (round svgWidth)
-                |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v })
+
+        lines = values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v })
 
         initial =
-            note.waveform |> Array.get 0 |> Maybe.withDefault 0
+            values |> List.head |> Maybe.withDefault 0
     in
     path
         [ fill "none"
@@ -390,14 +398,22 @@ oscilatorIcon t =
             M { x = 0, y = 0 }
                 :: (case t of
                         Square ->
-                            [ L { x = 2, y = 0 } ]
+                            [ M { x = 0, y = -0.75 }, L { x = 1, y = -0.75 }, L { x = 1, y = 0.75 }, L { x = 2, y = 0.75 } ]
+
+                        Sawtooth ->
+                            [ M { x = 0, y = -0.75 }, L { x = 1, y = 0.75 }, L { x = 1, y = -0.75 }, L { x = 2, y = 0.75 } ]
+
+                        Triangle ->
+                            [ L { x = 0.5, y = -0.75 }, L { x = 1.5, y = 0.75 }, L { x = 2, y = 0 } ]
 
                         _ ->
-                            [ L { x = 2, y = 0 } ]
+                            [ Q { x = 0.5, y = -1.5 } { x = 1, y = 0 } []
+                            , Q { x = 1.5, y = 1.5 } { x = 2, y = 0 } []
+                            ]
                    )
                 |> pathDefinition
     in
-    path [ stroke "#fcbeed", strokeWidth "0.2", d pathDef ] []
+    path [ stroke "#fcbeed", strokeWidth "0.2", fill "none", d pathDef ] []
 
 
 view : Model -> Html.Html Action
