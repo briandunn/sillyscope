@@ -5,7 +5,7 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Dict exposing (Dict)
-import Html exposing (div, input)
+import Html exposing (div, input, text)
 import Html.Attributes exposing (style, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
@@ -18,7 +18,14 @@ import Task
 
 
 type alias Note =
-    { id : Int, frequency : Float, attack : Float, node : Json.Value, waveform : Array Float }
+    { id : Int, frequency : Float, attack : Float, node : Json.Value, waveform : Array Float, oscilatorType : OscilatorType }
+
+
+type OscilatorType
+    = Sine
+    | Square
+    | Sawtooth
+    | Triangle
 
 
 type alias Model =
@@ -26,6 +33,7 @@ type alias Model =
     , zoom : Float
     , zoomStart : Maybe Point
     , scene : { width : Float, height : Float }
+    , oscilatorType : OscilatorType
     }
 
 
@@ -54,6 +62,7 @@ type Action
     | Viewport ViewportAction
     | Waveform Json.Encode.Value
     | NotePressed Json.Encode.Value
+    | SetOscilatorType OscilatorType
 
 
 port noteRelease : Json.Value -> Cmd msg
@@ -70,7 +79,7 @@ port waveform : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 } }
+    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
     , Task.perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -93,18 +102,44 @@ main =
         }
 
 
-buildNoteCommand n =
+oscilatorTypes =
+    [ ( "sawtooth", Sawtooth ), ( "sine", Sine ), ( "square", Square ), ( "triange", Triangle ) ] |> Dict.fromList
+
+
+oscilatorTypeToString ot =
+    case ot of
+        Sawtooth ->
+            "sawtooth"
+
+        Sine ->
+            "sine"
+
+        Square ->
+            "square"
+
+        Triangle ->
+            "triangle"
+
+
+stringToOscliatorType s =
+    oscilatorTypes |> Dict.get s |> Maybe.withDefault Sine
+
+
+buildNoteCommand n ot =
     let
         -- middle c
         freq =
             (n + 3) |> interval |> (*) 220
+
+        oscilatorType =
+            oscilatorTypeToString ot
 
         json =
             Json.Encode.object
                 [ ( "id", Json.Encode.int n )
                 , ( "frequency", Json.Encode.float freq )
                 , ( "attack", Json.Encode.float 0.1 )
-                , ( "type", Json.Encode.string "sine" )
+                , ( "type", Json.Encode.string oscilatorType )
                 ]
     in
     json |> notePress
@@ -118,7 +153,7 @@ decodeNote : Json.Value -> Result Json.Error Note
 decodeNote note =
     let
         decoder =
-            Json.map5 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed Array.empty)
+            Json.map6 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed Array.empty) (Json.succeed Sine)
     in
     note |> Json.decodeValue decoder
 
@@ -136,7 +171,10 @@ update action model =
                     ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand note )
 
                 Nothing ->
-                    ( model, buildNoteCommand i )
+                    ( model, buildNoteCommand i model.oscilatorType )
+
+        SetOscilatorType oscilatorType ->
+            ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         Waveform form ->
             ( let
@@ -248,12 +286,12 @@ dropWhileFirstTwo test list =
 
 
 dropToLocalMinimum : List Float -> List Float
+
 dropToLocalMinimum values =
     values
-        |> dropWhileFirstTwo (>)
+        |> dropWhileFirstTwo (\a b -> (a > 0 && b > 0) || (a <= 0 && b <= 0))
         |> List.drop 1
-        |> dropWhileFirstTwo (<)
-        |> List.drop 1
+        |> dropWhileFirstTwo (\a b -> a > 0 && b > 0)
 
 
 noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
@@ -346,6 +384,22 @@ zoomEvents =
     ]
 
 
+oscilatorIcon t =
+    let
+        pathDef =
+            M { x = 0, y = 0 }
+                :: (case t of
+                        Square ->
+                            [ L { x = 2, y = 0 } ]
+
+                        _ ->
+                            [ L { x = 2, y = 0 } ]
+                   )
+                |> pathDefinition
+    in
+    path [ stroke "#fcbeed", strokeWidth "0.2", d pathDef ] []
+
+
 view : Model -> Html.Html Action
 view model =
     let
@@ -382,4 +436,10 @@ view model =
                     colors
                 )
             ]
+        , div
+            [ style "flex" "1", style "flex-direction" "column", style "display" "flex" ]
+            (oscilatorTypes
+                |> Dict.toList
+                |> List.map (\( name, t ) -> svg [ style "margin" "30px", style "border" "3px solid #fcbeed", width "30", height "30", viewBox "0 -1 2 2", onClick (SetOscilatorType t) ] [ oscilatorIcon t ])
+            )
         ]
