@@ -1,19 +1,19 @@
-port module Main exposing (Action(..), Model, PathCommand(..), colors, commandToString, interval, main, noteWave, pathDefinition, update, view)
+port module Main exposing (Action(..), Model, PathCommand(..), main)
 
 import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
 import Dict exposing (Dict)
-import Html exposing (div, input, text)
-import Html.Attributes exposing (style, type_)
+import Html exposing (div)
+import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
 import Json.Encode
 import Set exposing (Set)
 import String
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (d, fill, height, stroke, strokeOpacity, strokeWidth, viewBox, width)
+import Svg.Attributes exposing (d, height, stroke, viewBox, width)
 import Task
 
 
@@ -103,7 +103,7 @@ main =
 
 
 oscilatorTypes =
-    [ ( "sawtooth", Sawtooth ), ( "sine", Sine ), ( "square", Square ), ( "triange", Triangle ) ] |> Dict.fromList
+    [ ( "sawtooth", Sawtooth ), ( "sine", Sine ), ( "square", Square ), ( "triangle", Triangle ) ] |> Dict.fromList
 
 
 oscilatorTypeToString ot =
@@ -313,19 +313,27 @@ noteWave color zoom svgWidth note =
                 |> dropToLocalMinimum
                 |> List.take (round svgWidth)
 
-        lines = values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v })
+        lines =
+            values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v * 0.9 })
 
         initial =
             values |> List.head |> Maybe.withDefault 0
     in
     path
-        [ fill "none"
-        , stroke color
-        , strokeOpacity "0.5"
-        , strokeWidth "0.03"
+        [ stroke color
         , M { x = 0, y = initial } :: lines |> pathDefinition |> d
         ]
         []
+
+
+selectedAttribute test =
+    style "box-shadow"
+        (if test then
+            "unset"
+
+         else
+            "0px 0px 10vh inset white"
+        )
 
 
 keyboard notes =
@@ -352,13 +360,7 @@ keyboard notes =
                              else
                                 "auto"
                             )
-                        , style "box-shadow"
-                            (if Set.member i notes then
-                                "unset"
-
-                             else
-                                "0px 0px 10vh inset white"
-                            )
+                        , selectedAttribute (Set.member i notes)
                         , onClick (ToggleKey i)
                         ]
                         []
@@ -413,7 +415,7 @@ oscilatorIcon t =
                    )
                 |> pathDefinition
     in
-    path [ stroke "#fcbeed", strokeWidth "0.2", fill "none", d pathDef ] []
+    path [ d pathDef ] []
 
 
 view : Model -> Html.Html Action
@@ -439,6 +441,9 @@ view model =
                 [ width (String.fromFloat svgWidth)
                 , height (String.fromFloat (model.scene.height - 40))
                 , viewBox "0 -1 2 2"
+                , style "fill" "none"
+                , style "stroke-opacity" "0.5"
+                , style "stroke-width" "0.03"
                 ]
                 (List.indexedMap
                     (\noteId color ->
@@ -453,9 +458,24 @@ view model =
                 )
             ]
         , div
-            [ style "flex" "1", style "flex-direction" "column", style "display" "flex" ]
+            [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
             (oscilatorTypes
                 |> Dict.toList
-                |> List.map (\( name, t ) -> svg [ style "margin" "30px", style "border" "3px solid #fcbeed", width "30", height "30", viewBox "0 -1 2 2", onClick (SetOscilatorType t) ] [ oscilatorIcon t ])
+                |> List.map
+                    (\( name, t ) ->
+                        svg
+                            [ style "background-color" "#fcbeed"
+                            , style "fill" "none"
+                            , style "margin" "30px"
+                            , style "stroke" "rgb(105, 55, 216)"
+                            , style "stroke-opacity" "0.5"
+                            , style "stroke-width" "0.2"
+                            , selectedAttribute (name == oscilatorTypeToString model.oscilatorType)
+                            , width "50"
+                            , viewBox "0 -1 2 2"
+                            , onClick (SetOscilatorType t)
+                            ]
+                            [ oscilatorIcon t ]
+                    )
             )
         ]
