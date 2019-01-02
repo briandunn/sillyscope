@@ -1,6 +1,5 @@
-<ht>
-    [Sillyscope](https://briandunn.github.io/sillyscope/)
-</h1>
+[Sillyscope](https://briandunn.github.io/sillyscope/)
+-----------------------------------------------------
 
 An osciliscope that draws each of the [12 tones](https://en.wikipedia.org/wiki/Equal_temperament#Twelve-tone_equal_temperament) as a seprate color.
 
