@@ -1,12 +1,21 @@
 {
   "scripts": {
+    "build": "parcel build src/index.html --public-url '/sillyscope'",
+    "deploy": "gh-pages-deploy -- 'boom'",
     "start": "parcel src/index.html"
   },
   "devDependencies": {
     "elm-hot": "^1.0.1",
+    "gh-pages-deploy": "^0.5.0",
     "node-elm-compiler": "^5.0.1"
   },
   "dependencies": {
     "parcel": "^1.11.0"
+  },
+  "gh-pages-deploy": {
+    "staticpath": "dist",
+    "prep": [
+      "build"
+    ]
   }
 }
