@@ -1,4 +1,4 @@
-port module Main exposing (Action(..), Model, PathCommand(..), main)
+port module Main exposing (Action(..), Model, main)
 
 import Array exposing (Array)
 import Browser
@@ -10,6 +10,7 @@ import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
 import Json.Encode
+import PathDefinition exposing (PathCommand(..))
 import Set exposing (Set)
 import String
 import Svg exposing (path, svg)
@@ -236,38 +237,6 @@ update action model =
             )
 
 
-type PathCommand
-    = M Point
-    | L Point
-    | Q Point Point (List Point)
-    | C Point Point Point (List Point)
-
-
-commandToString : PathCommand -> String
-commandToString command =
-    let
-        toString p =
-            String.join "," (List.map String.fromFloat [ p.x, p.y ])
-    in
-    case command of
-        M p ->
-            "M " ++ toString p
-
-        L p ->
-            "L " ++ toString p
-
-        Q p1 p2 l ->
-            "Q " ++ (p1 :: p2 :: l |> List.map toString |> String.join " ")
-
-        C p1 p2 p3 l ->
-            "Q " ++ (p1 :: p2 :: p3 :: l |> List.map toString |> String.join " ")
-
-
-pathDefinition : List PathCommand -> String
-pathDefinition commands =
-    commands |> List.map commandToString |> String.join " "
-
-
 interval : Int -> Float
 interval n =
     2 ^ (toFloat n / 12.0)
@@ -321,7 +290,7 @@ noteWave color zoom svgWidth note =
     in
     path
         [ stroke color
-        , M { x = 0, y = initial } :: lines |> pathDefinition |> d
+        , M { x = 0, y = initial } :: lines |> PathDefinition.toString |> d
         ]
         []
 
@@ -413,7 +382,7 @@ oscilatorIcon t =
                             , Q { x = 1.5, y = 1.5 } { x = 2, y = 0 } []
                             ]
                    )
-                |> pathDefinition
+                |> PathDefinition.toString
     in
     path [ d pathDef ] []
 
