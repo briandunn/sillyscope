@@ -6,16 +6,19 @@ import Html exposing (div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
+import Math.Vector2 exposing (vec2)
+import Math.Vector3 exposing (vec3)
 import Model exposing (Action(..), Model, Note, Point, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, height, stroke, viewBox, width)
+import WebGL exposing (Mesh, Shader)
 
 
 colors =
-    [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
+    [ ( 252, 190, 237 ), ( 61, 52, 4 ), ( 55, 94, 7 ), ( 11, 126, 24 ), ( 18, 155, 124 ), ( 27, 121, 180 ), ( 39, 55, 200 ), ( 105, 55, 216 ), ( 172, 75, 229 ), ( 221, 99, 238 ), ( 245, 128, 240 ), ( 250, 159, 234 ), ( 252, 190, 237 ) ]
 
 
 noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
@@ -50,6 +53,10 @@ selectedAttribute test =
         )
 
 
+toCSSColor ( r, g, b ) =
+    "rgb(" ++ ([ r, g, b ] |> List.map String.fromFloat |> String.join ",") ++ ")"
+
+
 keyboard notes =
     let
         isSharp i =
@@ -64,7 +71,7 @@ keyboard notes =
             |> List.indexedMap
                 (\i color ->
                     div
-                        [ style "background-color" color
+                        [ color |> toCSSColor |> style "background-color"
                         , style "flex" "1"
                         , style "margin" "2px"
                         , style "width"
@@ -126,25 +133,11 @@ view model =
             ([ style "flex" "4", style "cursor" "ew-resize" ]
                 ++ zoomEvents
             )
-            [ svg
+            [ WebGL.toHtml
                 [ width (String.fromFloat svgWidth)
                 , height (String.fromFloat (model.scene.height - 40))
-                , viewBox "0 -1 2 2"
-                , style "fill" "none"
-                , style "stroke-opacity" "0.5"
-                , style "stroke-width" "0.03"
                 ]
-                (List.indexedMap
-                    (\noteId color ->
-                        case Dict.get noteId model.notes of
-                            Just note ->
-                                noteWave color (model.zoom * 10) svgWidth note
-
-                            Nothing ->
-                                path [] []
-                    )
-                    colors
-                )
+                (entities model)
             ]
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
@@ -170,6 +163,39 @@ view model =
         ]
 
 
+mesh waveform =
+    let
+        sampleCount =
+            waveform |> List.length |> toFloat
+
+        x i =
+            ((toFloat i / sampleCount) * 2) - 1
+    in
+    waveform |> List.indexedMap (\i v -> { position = vec2 (x i) v }) |> WebGL.lineStrip
+
+
+vertexShader =
+    [glsl|
+    attribute vec2 position;
+
+    void main () {
+        gl_Position = vec4(position, 0.0, 1.0);
+    }
+|]
+
+
+fragmentShader =
+    [glsl|
+
+    precision mediump float;
+    uniform vec3 color;
+
+    void main () {
+        gl_FragColor = vec4(color, 1);
+    }
+|]
+
+
 parsePoint : (Float -> Float -> a) -> Json.Decoder a
 parsePoint tagger =
     Json.map2 tagger
@@ -193,3 +219,48 @@ zoomEvents =
     , Html.Events.on "mousemove" (parseZoom ZoomChange)
     , Html.Events.on "mousedown" (parseZoom ZoomStart)
     ]
+
+
+noteToEntity note color =
+    WebGL.entity vertexShader fragmentShader (mesh note.waveform) { color = color }
+
+
+colorToVec ( r, g, b ) =
+    vec3 (r / 255.0) (g / 255.0) (b / 255.0)
+
+
+entities model =
+    colors
+        |> List.indexedMap (\i c -> ( i, c ))
+        |> List.foldr
+            (\( i, color ) es ->
+                case Dict.get i model.notes of
+                    Just note ->
+                        noteToEntity note (colorToVec color) :: es
+
+                    Nothing ->
+                        es
+            )
+            []
+
+
+
+--  svg
+--                 [ width (String.fromFloat svgWidth)
+--                 , height (String.fromFloat (model.scene.height - 40))
+--                 , viewBox "0 -1 2 2"
+--                 , style "fill" "none"
+--                 , style "stroke-opacity" "0.5"
+--                 , style "stroke-width" "0.03"
+--                 ]
+--                 (List.indexedMap
+--                     (\noteId color ->
+--                         case Dict.get noteId model.notes of
+--                             Just note ->
+--                                 noteWave color (model.zoom * 10) svgWidth note
+--                             Nothing ->
+--                                 path [] []
+--                     )
+--                     colors
+--                 )
+--             ,
