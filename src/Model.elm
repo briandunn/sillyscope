@@ -1,6 +1,5 @@
-module Model exposing (Action(..), Model, Note, Point, WidthHeight, ZoomAction(..), ViewportAction(..), dropToLocalMinimum)
+module Model exposing (Action(..), Model, Note, Point, ViewportAction(..), WidthHeight, ZoomAction(..), dropToLocalMinimum)
 
-import Array exposing (Array)
 import Browser.Dom exposing (Viewport)
 import Dict exposing (Dict)
 import Json.Decode as D
@@ -29,7 +28,7 @@ type Action
 
 
 type alias Note =
-    { id : Int, frequency : Float, attack : Float, node : D.Value, waveform : Array Float, oscilatorType : OscilatorType }
+    { id : Int, frequency : Float, attack : Float, node : D.Value, waveform : List Float, oscilatorType : OscilatorType }
 
 
 type alias Model =

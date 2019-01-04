@@ -1,6 +1,5 @@
 port module Main exposing (main)
 
-import Array exposing (Array)
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -78,13 +77,35 @@ decodeNote : Json.Value -> Result Json.Error Note
 decodeNote note =
     let
         decoder =
-            Json.map6 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed Array.empty) (Json.succeed Sine)
+            Json.map6 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed []) (Json.succeed Sine)
     in
     note |> Json.decodeValue decoder
 
 
 type alias WaveformMessage =
-    { id : Int, waveform : Array Float }
+    { id : Int, waveform : List Float }
+
+
+decodeWaveform form model =
+    let
+        decoder =
+            Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.list Json.float))
+
+        decodedWaveform =
+            Json.decodeValue decoder form
+
+        updateNote wf note =
+            Maybe.map (\n -> { n | waveform = wf }) note
+
+        trim wf =
+            wf |> Model.dropToLocalMinimum |> List.take (round model.scene.height)
+    in
+    case decodedWaveform of
+        Ok wf ->
+            { model | notes = Dict.update wf.id (updateNote (trim wf.waveform)) model.notes }
+
+        Err _ ->
+            model
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -102,25 +123,7 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         Waveform form ->
-            ( let
-                decoder =
-                    Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.array Json.float))
-
-                decodedWaveform =
-                    Json.decodeValue decoder form
-
-                updateNote : Array Float -> Maybe Note -> Maybe Note
-                updateNote wf note =
-                    Maybe.map (\n -> { n | waveform = wf }) note
-              in
-              case decodedWaveform of
-                Ok wf ->
-                    { model | notes = Dict.update wf.id (updateNote wf.waveform) model.notes }
-
-                Err _ ->
-                    model
-            , Cmd.none
-            )
+            ( decodeWaveform form model, Cmd.none )
 
         NotePressed note ->
             ( case decodeNote note of

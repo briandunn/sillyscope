@@ -6,7 +6,7 @@ import Html exposing (div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), ZoomAction(..), Model, Point, Note, dropToLocalMinimum)
+import Model exposing (Action(..), Model, Note, Point, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set
@@ -26,9 +26,6 @@ noteWave color zoom svgWidth note =
 
         values =
             note.waveform
-                |> toList
-                |> dropToLocalMinimum
-                |> List.take (round svgWidth)
 
         lines =
             values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v * 0.9 })
