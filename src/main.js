@@ -31,12 +31,10 @@ function notePress({ id, frequency, attack, type }) {
   });
 }
 
-function noteRelease({ attack, node: { gain, osc, analyser } }) {
+function noteRelease({ attack, node: { osc, analyser, gain } }) {
   gain.gain.linearRampToValueAtTime(0, context.currentTime + attack);
   setTimeout(() => {
-    [gain, osc, analyser].forEach(node => {
-      node.disconnect();
-    });
+    [osc, gain, analyser].forEach(node => node.disconnect());
   }, attack * 1000);
 }
 
