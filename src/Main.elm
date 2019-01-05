@@ -8,7 +8,7 @@ import Json.Decode as Json
 import Json.Encode
 import Model exposing (Action(..), Model, Note, ViewportAction(..), WidthHeight, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
-import Task exposing (perform)
+import Task exposing (attempt, perform)
 import View exposing (view)
 
 
@@ -29,7 +29,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
+    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, wrapperElement = Nothing, oscilatorType = Sine }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -101,8 +101,16 @@ decodeWaveforms forms model =
         updateNote wf note =
             Maybe.map (\n -> { n | waveform = wf }) note
 
+        frameCount =
+            case model.wrapperElement of
+                Nothing ->
+                    0
+
+                Just element ->
+                    round element.element.width
+
         trim wf =
-            wf |> Model.dropToLocalMinimum |> List.take (round model.scene.height)
+            wf |> Model.dropToLocalMinimum |> List.take frameCount
     in
     case decodedWaveform of
         Ok wfs ->
@@ -142,14 +150,19 @@ update action model =
                     ( model, Cmd.none )
 
         Viewport viewPortAction ->
-            ( case viewPortAction of
+            let
+                getWrapper =
+                    "scope-wrapper" |> Browser.Dom.getElement |> attempt (\result -> Viewport (WrapperElement result))
+            in
+            case viewPortAction of
+                WrapperElement result ->
+                    ( { model | wrapperElement = Result.toMaybe result }, Cmd.none )
+
                 ViewportSet viewPort ->
-                    { model | scene = viewPort.scene }
+                    ( model, getWrapper )
 
                 ViewportChange viewPort ->
-                    { model | scene = { width = toFloat viewPort.width, height = toFloat viewPort.height } }
-            , Cmd.none
-            )
+                    ( model, getWrapper )
 
         Zoom zoom ->
             ( case zoom of
@@ -162,7 +175,9 @@ update action model =
                             model
 
                         Just start ->
-                            { model | zoom = (point.x - start.x) / model.scene.width }
+                            -- TODO: fix zooming
+                            -- { model | zoom = (point.x - start.x) / model.scene.width }
+                            model
 
                 ZoomStop ->
                     { model | zoomStart = Nothing }

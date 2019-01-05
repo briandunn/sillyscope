@@ -3,7 +3,7 @@ module View exposing (view)
 import Array exposing (toList)
 import Dict
 import Html exposing (div)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (id, style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
 import Math.Vector2 exposing (vec2)
@@ -19,28 +19,6 @@ import WebGL exposing (Mesh, Shader)
 
 colors =
     [ ( 252, 190, 237 ), ( 61, 52, 4 ), ( 55, 94, 7 ), ( 11, 126, 24 ), ( 18, 155, 124 ), ( 27, 121, 180 ), ( 39, 55, 200 ), ( 105, 55, 216 ), ( 172, 75, 229 ), ( 221, 99, 238 ), ( 245, 128, 240 ), ( 250, 159, 234 ), ( 252, 190, 237 ) ]
-
-
-noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
-noteWave color zoom svgWidth note =
-    let
-        xDelta =
-            (2 * zoom) / svgWidth
-
-        values =
-            note.waveform
-
-        lines =
-            values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v * 0.9 })
-
-        initial =
-            values |> List.head |> Maybe.withDefault 0
-    in
-    path
-        [ stroke color
-        , M { x = 0, y = initial } :: lines |> PathDefinition.toString |> d
-        ]
-        []
 
 
 selectedAttribute test =
@@ -117,25 +95,30 @@ oscilatorIcon t =
 view : Model -> Html.Html Action
 view model =
     let
-        svgWidth =
-            model.scene.height
-
         noteIds =
             model.notes |> Dict.keys |> Set.fromList
+
+        dims =
+            case model.wrapperElement of
+                Nothing ->
+                    { sceneHeight = 0, scopeWidth = 0 }
+
+                Just element ->
+                    { sceneHeight = element.viewport.height - 40, scopeWidth = element.element.width }
     in
     div
         [ style "display" "flex"
-        , style "height" (String.fromFloat model.scene.height)
-        , style "margin" "20px"
+        , style "height" (String.fromFloat dims.sceneHeight ++ "px")
+        , style "padding" "20px"
         ]
         [ keyboard noteIds
         , div
-            ([ style "flex" "4", style "cursor" "ew-resize" ]
+            ([ style "flex" "4", style "cursor" "ew-resize", id "scope-wrapper", style "height" "100%" ]
                 ++ zoomEvents
             )
             [ WebGL.toHtml
-                [ width (String.fromFloat svgWidth)
-                , height (String.fromFloat (model.scene.height - 40))
+                [ width (String.fromFloat dims.scopeWidth)
+                , height (String.fromFloat dims.sceneHeight)
                 ]
                 (entities model)
             ]

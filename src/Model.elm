@@ -1,6 +1,6 @@
 module Model exposing (Action(..), Model, Note, Point, ViewportAction(..), WidthHeight, ZoomAction(..), dropToLocalMinimum)
 
-import Browser.Dom exposing (Viewport)
+import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
 import Json.Decode as D
 import Json.Encode as E
@@ -10,6 +10,7 @@ import OscilatorType exposing (OscilatorType)
 type ViewportAction
     = ViewportChange WidthHeight
     | ViewportSet Viewport
+    | WrapperElement (Result Browser.Dom.Error Element)
 
 
 type ZoomAction
@@ -35,7 +36,7 @@ type alias Model =
     { notes : Dict Int Note
     , zoom : Float
     , zoomStart : Maybe Point
-    , scene : { width : Float, height : Float }
+    , wrapperElement : Maybe Element
     , oscilatorType : OscilatorType
     }
 
