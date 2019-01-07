@@ -151,10 +151,28 @@ mesh waveform =
         sampleCount =
             waveform |> List.length |> toFloat
 
-        x i =
-            ((toFloat i / sampleCount) * 2) - 1
+        toTriangles coords =
+            case coords of
+                p1 :: p2 :: rest ->
+                    let
+                        ( x1, y1 ) =
+                            p1
+
+                        ( x2, y2 ) =
+                            p2
+
+                        p3 =
+                            ( x1 + (x2 - x1) / 2, y1 + 0.1 )
+                    in
+                    List.concat [ List.map (\( x, y ) -> { position = vec2 x y }) [ p1, p2, p3 ], toTriangles rest ]
+
+                _ ->
+                    []
     in
-    waveform |> List.indexedMap (\i v -> { position = vec2 (x i) v }) |> WebGL.lineStrip
+    waveform
+        |> List.indexedMap (\i v -> ( ((toFloat i / sampleCount) * 2) - 1, v ))
+        |> toTriangles
+        |> WebGL.triangleStrip
 
 
 vertexShader =
