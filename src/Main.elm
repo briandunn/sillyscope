@@ -40,7 +40,6 @@ subscriptions model =
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
         , waveforms Waveform
         , notePressed NotePressed
-        , Browser.Events.onAnimationFrameDelta AnimationFrame
         ]
 
 
@@ -128,17 +127,19 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         Waveform forms ->
-            ( decodeWaveforms forms model, Cmd.none )
+            ( decodeWaveforms forms model, buildGetWaveformsCommand model.notes )
 
         NotePressed note ->
-            ( case decodeNote note of
+            case decodeNote note of
                 Ok o ->
-                    { model | notes = Dict.insert o.id o model.notes }
+                    let
+                        notes =
+                            Dict.insert o.id o model.notes
+                    in
+                    ( { model | notes = notes }, buildGetWaveformsCommand notes )
 
                 Err _ ->
-                    model
-            , Cmd.none
-            )
+                    ( model, Cmd.none )
 
         Viewport viewPortAction ->
             ( case viewPortAction of
@@ -168,16 +169,19 @@ update action model =
             , Cmd.none
             )
 
-        AnimationFrame _ ->
-            ( model
-            , getWaveforms
-                (Json.Encode.list
+
+buildGetWaveformsCommand notes =
+    case Dict.values notes of
+        [] ->
+            Cmd.none
+
+        values ->
+            values
+                |> Json.Encode.list
                     (\note ->
                         Json.Encode.object [ ( "id", Json.Encode.int note.id ), ( "node", note.node ) ]
                     )
-                    (Dict.values model.notes)
-                )
-            )
+                |> getWaveforms
 
 
 interval : Int -> Float
