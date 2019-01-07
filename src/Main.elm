@@ -18,10 +18,13 @@ port noteRelease : Json.Value -> Cmd msg
 port notePress : Json.Value -> Cmd msg
 
 
+port getWaveforms : Json.Value -> Cmd msg
+
+
 port notePressed : (Json.Encode.Value -> msg) -> Sub msg
 
 
-port waveform : (Json.Encode.Value -> msg) -> Sub msg
+port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 
 init : () -> ( Model, Cmd Action )
@@ -35,8 +38,9 @@ subscriptions : Model -> Sub Action
 subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
-        , waveform Waveform
+        , waveforms Waveform
         , notePressed NotePressed
+        , Browser.Events.onAnimationFrameDelta AnimationFrame
         ]
 
 
@@ -86,13 +90,14 @@ type alias WaveformMessage =
     { id : Int, waveform : List Float }
 
 
-decodeWaveform form model =
+decodeWaveforms forms model =
     let
         decoder =
             Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.list Json.float))
+                |> Json.list
 
         decodedWaveform =
-            Json.decodeValue decoder form
+            Json.decodeValue decoder forms
 
         updateNote wf note =
             Maybe.map (\n -> { n | waveform = wf }) note
@@ -101,8 +106,8 @@ decodeWaveform form model =
             wf |> Model.dropToLocalMinimum |> List.take (round model.scene.height)
     in
     case decodedWaveform of
-        Ok wf ->
-            { model | notes = Dict.update wf.id (updateNote (trim wf.waveform)) model.notes }
+        Ok wfs ->
+            { model | notes = List.foldl (\wf notes -> Dict.update wf.id (updateNote (trim wf.waveform)) notes) model.notes wfs }
 
         Err _ ->
             model
@@ -122,8 +127,8 @@ update action model =
         SetOscilatorType oscilatorType ->
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
-        Waveform form ->
-            ( decodeWaveform form model, Cmd.none )
+        Waveform forms ->
+            ( decodeWaveforms forms model, Cmd.none )
 
         NotePressed note ->
             ( case decodeNote note of
@@ -161,6 +166,17 @@ update action model =
                 ZoomStop ->
                     { model | zoomStart = Nothing }
             , Cmd.none
+            )
+
+        AnimationFrame _ ->
+            ( model
+            , getWaveforms
+                (Json.Encode.list
+                    (\note ->
+                        Json.Encode.object [ ( "id", Json.Encode.int note.id ), ( "node", note.node ) ]
+                    )
+                    (Dict.values model.notes)
+                )
             )
 
 

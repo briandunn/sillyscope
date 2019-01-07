@@ -25,6 +25,7 @@ type Action
     | Waveform E.Value
     | NotePressed D.Value
     | SetOscilatorType OscilatorType
+    | AnimationFrame Float
 
 
 type alias Note =
