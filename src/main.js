@@ -41,13 +41,15 @@ function noteRelease({ attack, node: { gain, osc, analyser } }) {
 }
 
 function getWaveforms(notes) {
-  const waveforms = notes.map(({ id, node: { analyser } }) => {
-    const waveform = new Float32Array(analyser.frequencyBinCount);
-    analyser.getFloatTimeDomainData(waveform);
-    return { id, waveform: Array.from(waveform) };
-  });
+  requestAnimationFrame(() => {
+    const waveforms = notes.map(({ id, node: { analyser } }) => {
+      const waveform = new Float32Array(analyser.frequencyBinCount);
+      analyser.getFloatTimeDomainData(waveform);
+      return { id, waveform: Array.from(waveform) };
+    });
 
-  app.ports.waveforms.send(waveforms);
+    app.ports.waveforms.send(waveforms);
+  });
 }
 
 const subscriptions = {
