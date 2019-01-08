@@ -1,4 +1,4 @@
-const { Elm } = require('./Main.elm');
+import { Elm } from './Main.elm';
 
 const context = new AudioContext();
 
