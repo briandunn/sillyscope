@@ -10,6 +10,7 @@ function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
   const gain = context.createGain();
   const analyser = context.createAnalyser();
+  // analyser.fftSize = 32768;
   osc.connect(gain);
   osc.frequency.value = frequency;
   gain.gain.value = 0;

@@ -147,40 +147,21 @@ view model =
 
 
 mesh waveform =
-    let
-        sampleCount =
-            waveform |> List.length |> toFloat
-
-        toTriangles coords =
-            case coords of
-                p1 :: p2 :: rest ->
-                    let
-                        ( x1, y1 ) =
-                            p1
-
-                        ( x2, y2 ) =
-                            p2
-
-                        p3 =
-                            ( x1 + (x2 - x1) / 2, y1 + 0.1 )
-                    in
-                    List.concat [ List.map (\( x, y ) -> { position = vec2 x y }) [ p1, p2, p3 ], toTriangles rest ]
-
-                _ ->
-                    []
-    in
     waveform
-        |> List.indexedMap (\i v -> ( ((toFloat i / sampleCount) * 2) - 1, v ))
-        |> toTriangles
-        |> WebGL.triangleStrip
+        |> List.indexedMap (\i v -> { i = toFloat i, val = v })
+        |> WebGL.lineStrip
 
 
 vertexShader =
     [glsl|
-    attribute vec2 position;
+    attribute float val;
+    attribute float i;
+    uniform float samples;
 
     void main () {
-        gl_Position = vec4(position, 0.0, 1.0);
+        float x = ((i / samples) * 2.0) - 1.0;
+
+        gl_Position = vec4(x,val, 0.0, 1.0);
     }
 |]
 
@@ -223,7 +204,7 @@ zoomEvents =
 
 
 noteToEntity note color =
-    WebGL.entity vertexShader fragmentShader (mesh note.waveform) { color = color }
+    WebGL.entity vertexShader fragmentShader (mesh note.waveform) { color = color, samples = note.waveform |> List.length |> toFloat }
 
 
 colorToVec ( r, g, b ) =
@@ -243,25 +224,3 @@ entities model =
                         es
             )
             []
-
-
-
---  svg
---                 [ width (String.fromFloat svgWidth)
---                 , height (String.fromFloat (model.scene.height - 40))
---                 , viewBox "0 -1 2 2"
---                 , style "fill" "none"
---                 , style "stroke-opacity" "0.5"
---                 , style "stroke-width" "0.03"
---                 ]
---                 (List.indexedMap
---                     (\noteId color ->
---                         case Dict.get noteId model.notes of
---                             Just note ->
---                                 noteWave color (model.zoom * 10) svgWidth note
---                             Nothing ->
---                                 path [] []
---                     )
---                     colors
---                 )
---             ,
