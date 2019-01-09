@@ -146,10 +146,22 @@ view model =
         ]
 
 
+type alias VirtexAttributes =
+    { i : Float, val : Float }
+
+
+toTriangle attrs =
+    ( { attrs | i = attrs.i - 2, val = attrs.val - 0.1 }
+    , { attrs | val = attrs.val + 0.1 }
+    , { attrs | i = attrs.i + 2, val = attrs.val - 0.1 }
+    )
+
+
 mesh waveform =
     waveform
-        |> List.indexedMap (\i v -> { i = toFloat i, val = v })
-        |> WebGL.lineStrip
+        |> List.indexedMap (\i v -> VirtexAttributes (toFloat i) v)
+        |> List.map toTriangle
+        |> WebGL.triangles
 
 
 vertexShader =
