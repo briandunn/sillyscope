@@ -29,7 +29,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, wrapperElement = Nothing, oscilatorType = Sine }
+    ( { notes = Dict.empty, zoom = 1, zoomStart = Nothing, wrapperElement = Nothing, oscilatorType = Sine }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -107,7 +107,7 @@ decodeWaveforms forms model =
                     0
 
                 Just element ->
-                    round element.element.width
+                    round (element.element.width * model.zoom)
 
         trim wf =
             wf |> Model.dropToLocalMinimum |> List.take frameCount
@@ -175,9 +175,12 @@ update action model =
                             model
 
                         Just start ->
-                            -- TODO: fix zooming
-                            -- { model | zoom = (point.x - start.x) / model.scene.width }
-                            model
+                            case model.wrapperElement of
+                                Nothing ->
+                                    model
+
+                                Just element ->
+                                    { model | zoom = (point.x - start.x) / element.element.width }
 
                 ZoomStop ->
                     { model | zoomStart = Nothing }
