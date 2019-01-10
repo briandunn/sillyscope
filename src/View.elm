@@ -150,18 +150,9 @@ type alias VirtexAttributes =
     { i : Float, val : Float }
 
 
-toTriangles delta i list =
-    case list of
-        head :: rest ->
-            VirtexAttributes i (head + delta) :: toTriangles (delta * -1) (i + 1) rest
-
-        [] ->
-            []
-
-
 mesh waveform =
     waveform
-        |> toTriangles 0.05 0.0
+        |> List.indexedMap (\i v -> VirtexAttributes (toFloat i) v)
         |> WebGL.triangleStrip
 
 
@@ -171,10 +162,15 @@ vertexShader =
     attribute float i;
     uniform float samples;
 
+    bool isEven (in float x) {
+        return floor(mod(x,2.0)) == 0.0;
+    }
+
     void main () {
         float x = ((i / samples) * 2.0) - 1.0;
+        float delta = isEven(i) ? 0.1 : -0.1;
 
-        gl_Position = vec4(x,val, 0.0, 1.0);
+        gl_Position = vec4(x,val + delta, 0.0, 1.0);
     }
 |]
 
