@@ -2,12 +2,11 @@ module View exposing (view)
 
 import Array exposing (toList)
 import Dict
+import GL
 import Html exposing (div)
 import Html.Attributes exposing (id, style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Math.Vector2 exposing (vec2)
-import Math.Vector3 exposing (vec3)
 import Model exposing (Action(..), Model, Note, Point, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
@@ -120,7 +119,7 @@ view model =
                 [ width (String.fromFloat dims.scopeWidth)
                 , height (String.fromFloat dims.sceneHeight)
                 ]
-                (entities model)
+                (GL.entities colors model)
             ]
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
@@ -146,47 +145,6 @@ view model =
         ]
 
 
-type alias VirtexAttributes =
-    { i : Float, val : Float }
-
-
-mesh waveform =
-    waveform
-        |> List.indexedMap (\i v -> VirtexAttributes (toFloat i) v)
-        |> WebGL.triangleStrip
-
-
-vertexShader =
-    [glsl|
-    attribute float val;
-    attribute float i;
-    uniform float samples;
-
-    bool isEven (in float x) {
-        return floor(mod(x,2.0)) == 0.0;
-    }
-
-    void main () {
-        float x = ((i / samples) * 2.0) - 1.0;
-        float delta = (isEven(i) ? 1.0 : -1.0) * 0.03;
-
-        gl_Position = vec4(x + delta,val + delta, 0.0, 1.0);
-    }
-|]
-
-
-fragmentShader =
-    [glsl|
-
-    precision mediump float;
-    uniform vec3 color;
-
-    void main () {
-        gl_FragColor = vec4(color, 1);
-    }
-|]
-
-
 parsePoint : (Float -> Float -> a) -> Json.Decoder a
 parsePoint tagger =
     Json.map2 tagger
@@ -210,26 +168,3 @@ zoomEvents =
     , Html.Events.on "mousemove" (parseZoom ZoomChange)
     , Html.Events.on "mousedown" (parseZoom ZoomStart)
     ]
-
-
-noteToEntity note color =
-    WebGL.entity vertexShader fragmentShader (mesh note.waveform) { color = color, samples = note.waveform |> List.length |> toFloat }
-
-
-colorToVec ( r, g, b ) =
-    vec3 (r / 255.0) (g / 255.0) (b / 255.0)
-
-
-entities model =
-    colors
-        |> List.indexedMap (\i c -> ( i, c ))
-        |> List.foldr
-            (\( i, color ) es ->
-                case Dict.get i model.notes of
-                    Just note ->
-                        noteToEntity note (colorToVec color) :: es
-
-                    Nothing ->
-                        es
-            )
-            []
