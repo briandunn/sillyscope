@@ -150,18 +150,19 @@ type alias VirtexAttributes =
     { i : Float, val : Float }
 
 
-toTriangle attrs =
-    ( { attrs | i = attrs.i - 2, val = attrs.val - 0.1 }
-    , { attrs | val = attrs.val + 0.1 }
-    , { attrs | i = attrs.i + 2, val = attrs.val - 0.1 }
-    )
+toTriangles delta i list =
+    case list of
+        head :: rest ->
+            VirtexAttributes i (head + delta) :: toTriangles (delta * -1) (i + 1) rest
+
+        [] ->
+            []
 
 
 mesh waveform =
     waveform
-        |> List.indexedMap (\i v -> VirtexAttributes (toFloat i) v)
-        |> List.map toTriangle
-        |> WebGL.triangles
+        |> toTriangles 0.05 0.0
+        |> WebGL.triangleStrip
 
 
 vertexShader =
