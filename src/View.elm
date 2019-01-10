@@ -168,9 +168,9 @@ vertexShader =
 
     void main () {
         float x = ((i / samples) * 2.0) - 1.0;
-        float delta = isEven(i) ? 0.1 : -0.1;
+        float delta = (isEven(i) ? 1.0 : -1.0) * 0.03;
 
-        gl_Position = vec4(x,val + delta, 0.0, 1.0);
+        gl_Position = vec4(x + delta,val + delta, 0.0, 1.0);
     }
 |]
 
