@@ -13,11 +13,12 @@ import PathDefinition exposing (PathCommand(..))
 import Set
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, height, stroke, viewBox, width)
-import WebGL exposing (Mesh, Shader)
+import WebGL
 
 
 colors =
     [ ( 252, 190, 237 ), ( 61, 52, 4 ), ( 55, 94, 7 ), ( 11, 126, 24 ), ( 18, 155, 124 ), ( 27, 121, 180 ), ( 39, 55, 200 ), ( 105, 55, 216 ), ( 172, 75, 229 ), ( 221, 99, 238 ), ( 245, 128, 240 ), ( 250, 159, 234 ), ( 252, 190, 237 ) ]
+        |> List.reverse
 
 
 selectedAttribute test =

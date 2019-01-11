@@ -5,10 +5,11 @@ import List exposing (foldr, indexedMap, length)
 import Math.Vector2 exposing (vec2)
 import Math.Vector3 exposing (vec3)
 import WebGL exposing (entity, triangleStrip)
+import WebGL.Settings.Blend as Blend
 
 
 noteToEntity note color =
-    entity vertexShader fragmentShader (mesh note.waveform) { color = color, samples = note.waveform |> length |> toFloat }
+    WebGL.entityWith [ Blend.add Blend.srcAlpha Blend.oneMinusSrcAlpha ] vertexShader fragmentShader (mesh note.waveform) { color = color, samples = note.waveform |> length |> toFloat }
 
 
 colorToVec ( r, g, b ) =
@@ -66,6 +67,6 @@ fragmentShader =
     uniform vec3 color;
 
     void main () {
-        gl_FragColor = vec4(color, 1);
+        gl_FragColor = vec4(color, 0.85);
     }
 |]
