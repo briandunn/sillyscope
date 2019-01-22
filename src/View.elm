@@ -6,7 +6,7 @@ import Html exposing (div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), Model, Note, Point, ZoomAction(..))
+import Model exposing (Action(..), Model, Note, Point, Waveform, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set
@@ -18,14 +18,11 @@ colors =
     [ "#fcbeed", "#fa9fea", "#f580f0", "#dd63ee", "#ac4be5", "#6937d8", "#2737c8", "#1b79b4", "#129b7c", "#0b7e18", "#375e07", "#3d3404", "#fcbeed" ]
 
 
-noteWave : String -> Float -> Float -> Note -> Svg.Svg Action
-noteWave color zoom svgWidth note =
+noteWave : String -> Float -> Float -> Waveform -> Svg.Svg Action
+noteWave color zoom svgWidth values =
     let
         xDelta =
             (2 * zoom) / svgWidth
-
-        values =
-            note.waveform
 
         lines =
             values |> List.drop 1 |> List.indexedMap (\i v -> L { x = toFloat i * xDelta, y = v * 0.9 })
@@ -136,9 +133,9 @@ view model =
                 ]
                 (List.indexedMap
                     (\noteId color ->
-                        case Dict.get noteId model.notes of
-                            Just note ->
-                                noteWave color (model.zoom * 10) svgWidth note
+                        case Dict.get noteId model.waveforms of
+                            Just waveform ->
+                                noteWave color (model.zoom * 10) svgWidth waveform
 
                             Nothing ->
                                 path [] []

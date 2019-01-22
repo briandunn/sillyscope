@@ -6,7 +6,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Json.Decode as Json
 import Json.Encode
-import Model exposing (Action(..), Model, Note, ViewportAction(..), WidthHeight, ZoomAction(..))
+import Model exposing (Action(..), Model, Note, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import Task exposing (perform)
 import View exposing (view)
@@ -29,7 +29,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
+    ( { notes = Dict.empty, waveforms = Dict.empty, audioSources = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -38,7 +38,7 @@ subscriptions : Model -> Sub Action
 subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
-        , waveforms Waveform
+        , waveforms UpdateWaveform
         , notePressed NotePressed
         ]
 
@@ -72,15 +72,15 @@ buildNoteCommand n ot =
     json |> notePress
 
 
-buildReleaseCommand note =
-    [ ( "attack", Json.Encode.float note.attack ), ( "node", note.node ) ] |> Json.Encode.object |> noteRelease
+buildReleaseCommand { node } =
+    [ ( "decay", Json.Encode.float 0.5 ), ( "node", node ) ] |> Json.Encode.object |> noteRelease
 
 
 decodeNote : Json.Value -> Result Json.Error Note
 decodeNote note =
     let
         decoder =
-            Json.map6 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed []) (Json.succeed Sine)
+            Json.map2 Note (Json.field "id" Json.int) (Json.field "node" Json.value)
     in
     note |> Json.decodeValue decoder
 
@@ -98,15 +98,19 @@ decodeWaveforms forms model =
         decodedWaveform =
             Json.decodeValue decoder forms
 
-        updateNote wf note =
-            Maybe.map (\n -> { n | waveform = wf }) note
+        updateWaveform wf note =
+            Maybe.map (\n -> { n | data = wf }) note
 
         trim wf =
             wf |> Model.dropToLocalMinimum |> List.take (round model.scene.height)
+
+        fold : List { id : Int, waveform : List Float } -> Dict Int Waveform -> Dict Int Waveform
+        fold nextForms currentForms =
+            currentForms
     in
     case decodedWaveform of
         Ok wfs ->
-            { model | notes = List.foldl (\wf notes -> Dict.update wf.id (updateNote (trim wf.waveform)) notes) model.notes wfs }
+            { model | waveforms = List.foldl fold model.waveforms wfs }
 
         Err _ ->
             model
@@ -118,7 +122,12 @@ update action model =
         ToggleKey i ->
             case Dict.get i model.notes of
                 Just note ->
-                    ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand note )
+                    case Dict.get i model.audioSources of
+                        Just audioSource ->
+                            ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand audioSource )
+
+                        Nothing ->
+                            ( model, Cmd.none )
 
                 Nothing ->
                     ( model, buildNoteCommand i model.oscilatorType )
@@ -126,17 +135,17 @@ update action model =
         SetOscilatorType oscilatorType ->
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
-        Waveform forms ->
+        UpdateWaveform forms ->
             ( decodeWaveforms forms model, buildGetWaveformsCommand model.notes )
 
         NotePressed note ->
             case decodeNote note of
                 Ok o ->
                     let
-                        notes =
-                            Dict.insert o.id o model.notes
+                        audioSources =
+                            Dict.insert o.id o model.audioSources
                     in
-                    ( { model | notes = notes }, buildGetWaveformsCommand notes )
+                    ( { model | audioSources = audioSources }, buildGetWaveformsCommand audioSources )
 
                 Err _ ->
                     ( model, Cmd.none )

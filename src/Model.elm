@@ -1,4 +1,4 @@
-module Model exposing (Action(..), Model, Note, Point, ViewportAction(..), WidthHeight, ZoomAction(..), dropToLocalMinimum)
+module Model exposing (Action(..), Model, Note, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum)
 
 import Browser.Dom exposing (Viewport)
 import Dict exposing (Dict)
@@ -22,17 +22,27 @@ type Action
     = ToggleKey Int
     | Zoom ZoomAction
     | Viewport ViewportAction
-    | Waveform E.Value
+    | UpdateWaveform E.Value
     | NotePressed D.Value
     | SetOscilatorType OscilatorType
 
 
 type alias Note =
-    { id : Int, frequency : Float, attack : Float, node : D.Value, waveform : List Float, oscilatorType : OscilatorType }
+    { id : Int, frequency : Float, attack : Float, oscilatorType : OscilatorType }
+
+
+type alias AudioSource =
+    { id : Int, node : D.Value }
+
+
+type alias Waveform =
+    List Float
 
 
 type alias Model =
-    { notes : Dict Int Note
+    { waveforms : Dict Int Waveform
+    , audioSources : Dict Int AudioSource
+    , notes : Dict Int Note
     , zoom : Float
     , zoomStart : Maybe Point
     , scene : { width : Float, height : Float }

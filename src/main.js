@@ -2,20 +2,31 @@ import { Elm } from './Main.elm';
 
 const context = new AudioContext();
 
+function buildNode(source) {
+  const gain = context.createGain();
+  const analyser = context.createAnalyser();
+  gain.gain.value = 0;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.connect(analyser);
+  return { source, gain, analyser };
+}
+
+navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+  const node = buildNode(context.createMediaStreamSource(stream));
+  app.ports.notePressed.send({ id: 'mic', attack: 0, frequency: 0, node });
+});
+
 const app = Elm.Main.init({
   node: document.querySelector('main'),
 });
 
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
-  const gain = context.createGain();
-  const analyser = context.createAnalyser();
-  osc.connect(gain);
   osc.frequency.value = frequency;
-  gain.gain.value = 0;
+  const { gain, ...node } = buildNode(osc);
+
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
-  gain.connect(context.destination);
-  osc.connect(analyser);
   osc.type = type;
   osc.start(0);
 
@@ -23,18 +34,14 @@ function notePress({ id, frequency, attack, type }) {
     id,
     frequency,
     attack,
-    node: {
-      analyser,
-      gain,
-      osc,
-    },
+    node: { ...node, gain },
   });
 }
 
-function noteRelease({ attack, node: { gain, osc, analyser } }) {
+function noteRelease({ attack, node: { gain, source, analyser } }) {
   gain.gain.linearRampToValueAtTime(0, context.currentTime + attack);
   setTimeout(() => {
-    [gain, osc, analyser].forEach(node => {
+    [gain, source, analyser].forEach(node => {
       node.disconnect();
     });
   }, attack * 1000);
