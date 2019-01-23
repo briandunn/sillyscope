@@ -1,4 +1,4 @@
-module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum)
+module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum, micId)
 
 import Browser.Dom exposing (Viewport)
 import Dict exposing (Dict)
@@ -20,10 +20,11 @@ type ZoomAction
 
 type Action
     = ToggleKey Int
+    | ToggleMic
     | Zoom ZoomAction
     | Viewport ViewportAction
     | UpdateWaveform E.Value
-    | NotePressed D.Value
+    | AddAudioSource D.Value
     | SetOscilatorType OscilatorType
 
 
@@ -43,6 +44,10 @@ type alias Model =
     , scene : { width : Float, height : Float }
     , oscilatorType : OscilatorType
     }
+
+
+micId =
+    777
 
 
 type alias Point =

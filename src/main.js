@@ -12,11 +12,6 @@ function buildNode(source) {
   return { source, gain, analyser };
 }
 
-navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-  const node = buildNode(context.createMediaStreamSource(stream));
-  app.ports.notePressed.send({ id: 777, node });
-});
-
 const app = Elm.Main.init({
   node: document.querySelector('main'),
 });
@@ -30,15 +25,20 @@ function notePress({ id, frequency, attack, type }) {
   osc.type = type;
   osc.start(0);
 
-  app.ports.notePressed.send({
+  app.ports.addAudioSource.send({
     id,
-    frequency,
-    attack,
     node: { ...node, gain },
   });
 }
 
-function noteRelease({ release, node: { gain, source, analyser } }) {
+function activateMic({ id }) {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    const node = buildNode(context.createMediaStreamSource(stream));
+    app.ports.addAudioSource.send({ id, node });
+  });
+}
+
+function releaseAudioSource({ release, node: { gain, source, analyser } }) {
   gain.gain.linearRampToValueAtTime(0, context.currentTime + release);
   setTimeout(() => {
     [gain, source, analyser].forEach(node => {
@@ -61,8 +61,9 @@ function getWaveforms(notes) {
 
 const subscriptions = {
   notePress,
-  noteRelease,
+  releaseAudioSource,
   getWaveforms,
+  activateMic,
 };
 
 for (const portName in subscriptions) {

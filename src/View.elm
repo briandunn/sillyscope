@@ -6,7 +6,7 @@ import Html exposing (div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), Model, Point, Waveform, ZoomAction(..))
+import Model exposing (Action(..), Model, Point, Waveform, ZoomAction(..), micId)
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set
@@ -104,6 +104,22 @@ oscilatorIcon t =
     path [ d pathDef ] []
 
 
+buttonSvg click selected children =
+    svg
+        [ style "background-color" "#fcbeed"
+        , style "fill" "none"
+        , style "margin" "30px"
+        , style "stroke" "rgb(105, 55, 216)"
+        , style "stroke-opacity" "0.5"
+        , style "stroke-width" "0.2"
+        , selectedAttribute selected
+        , width "50"
+        , viewBox "0 -1 2 2"
+        , onClick click
+        ]
+        children
+
+
 view : Model -> Html.Html Action
 view model =
     let
@@ -112,6 +128,9 @@ view model =
 
         noteIds =
             model.audioSources |> Dict.keys |> Set.fromList
+
+        micEnabled =
+            Dict.member micId model.audioSources
     in
     div
         [ style "display" "flex"
@@ -131,7 +150,7 @@ view model =
                 , style "stroke-opacity" "0.5"
                 , style "stroke-width" "0.03"
                 ]
-                ((case Dict.get 777 model.waveforms of
+                ((case Dict.get micId model.waveforms of
                     Just mic ->
                         noteWave "black" (model.zoom * 10) svgWidth mic
 
@@ -152,24 +171,14 @@ view model =
             ]
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
-            (OscilatorType.all
-                |> Dict.toList
-                |> List.map
-                    (\( name, t ) ->
-                        svg
-                            [ style "background-color" "#fcbeed"
-                            , style "fill" "none"
-                            , style "margin" "30px"
-                            , style "stroke" "rgb(105, 55, 216)"
-                            , style "stroke-opacity" "0.5"
-                            , style "stroke-width" "0.2"
-                            , selectedAttribute (name == OscilatorType.toString model.oscilatorType)
-                            , width "50"
-                            , viewBox "0 -1 2 2"
-                            , onClick (SetOscilatorType t)
-                            ]
-                            [ oscilatorIcon t ]
-                    )
+            (buttonSvg ToggleMic micEnabled []
+                :: (OscilatorType.all
+                        |> Dict.toList
+                        |> List.map
+                            (\( name, t ) ->
+                                buttonSvg (SetOscilatorType t) (name == OscilatorType.toString model.oscilatorType) [ oscilatorIcon t ]
+                            )
+                   )
             )
         ]
 
