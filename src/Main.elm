@@ -6,7 +6,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Json.Decode as Json
 import Json.Encode
-import Model exposing (Action(..), Model, Note, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..))
+import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import Task exposing (perform)
 import View exposing (view)
@@ -29,7 +29,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, waveforms = Dict.empty, audioSources = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
+    ( { waveforms = Dict.empty, audioSources = Dict.empty, zoom = 0.25, zoomStart = Nothing, scene = { width = 1, height = 1 }, oscilatorType = Sine }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -73,42 +73,41 @@ buildNoteCommand n ot =
 
 
 buildReleaseCommand { node } =
-    [ ( "decay", Json.Encode.float 0.5 ), ( "node", node ) ] |> Json.Encode.object |> noteRelease
+    [ ( "release", Json.Encode.float 0.5 ), ( "node", node ) ] |> Json.Encode.object |> noteRelease
 
 
-decodeNote : Json.Value -> Result Json.Error Note
+decodeNote : Json.Value -> Result Json.Error AudioSource
 decodeNote note =
     let
         decoder =
-            Json.map2 Note (Json.field "id" Json.int) (Json.field "node" Json.value)
+            Json.map2 AudioSource (Json.field "id" Json.int) (Json.field "node" Json.value)
     in
     note |> Json.decodeValue decoder
 
 
 type alias WaveformMessage =
-    { id : Int, waveform : List Float }
+    { id : Int, data : Waveform }
 
 
 decodeWaveforms forms model =
     let
         decoder =
-            Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.list Json.float))
+            Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "data" (Json.list Json.float))
                 |> Json.list
-
-        decodedWaveform =
-            Json.decodeValue decoder forms
-
-        updateWaveform wf note =
-            Maybe.map (\n -> { n | data = wf }) note
 
         trim wf =
             wf |> Model.dropToLocalMinimum |> List.take (round model.scene.height)
 
-        fold : List { id : Int, waveform : List Float } -> Dict Int Waveform -> Dict Int Waveform
-        fold nextForms currentForms =
-            currentForms
+        fold : WaveformMessage -> Dict Int Waveform -> Dict Int Waveform
+        fold { id, data } currentForms =
+            case Dict.get id model.audioSources of
+                Just _ ->
+                    Dict.insert id (trim data) currentForms
+
+                Nothing ->
+                    Dict.remove id currentForms
     in
-    case decodedWaveform of
+    case Json.decodeValue decoder forms of
         Ok wfs ->
             { model | waveforms = List.foldl fold model.waveforms wfs }
 
@@ -120,14 +119,13 @@ update : Action -> Model -> ( Model, Cmd Action )
 update action model =
     case action of
         ToggleKey i ->
-            case Dict.get i model.notes of
-                Just note ->
-                    case Dict.get i model.audioSources of
-                        Just audioSource ->
-                            ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand audioSource )
-
-                        Nothing ->
-                            ( model, Cmd.none )
+            case Dict.get i model.audioSources of
+                Just audioSource ->
+                    ( { model
+                        | audioSources = Dict.remove i model.audioSources
+                      }
+                    , buildReleaseCommand audioSource
+                    )
 
                 Nothing ->
                     ( model, buildNoteCommand i model.oscilatorType )
@@ -136,7 +134,7 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         UpdateWaveform forms ->
-            ( decodeWaveforms forms model, buildGetWaveformsCommand model.notes )
+            ( decodeWaveforms forms model, buildGetWaveformsCommand model.audioSources )
 
         NotePressed note ->
             case decodeNote note of

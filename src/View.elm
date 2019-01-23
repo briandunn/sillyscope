@@ -6,7 +6,7 @@ import Html exposing (div)
 import Html.Attributes exposing (style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), Model, Note, Point, Waveform, ZoomAction(..))
+import Model exposing (Action(..), Model, Point, Waveform, ZoomAction(..))
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set
@@ -111,7 +111,7 @@ view model =
             model.scene.height
 
         noteIds =
-            model.notes |> Dict.keys |> Set.fromList
+            model.audioSources |> Dict.keys |> Set.fromList
     in
     div
         [ style "display" "flex"

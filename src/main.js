@@ -38,13 +38,13 @@ function notePress({ id, frequency, attack, type }) {
   });
 }
 
-function noteRelease({ attack, node: { gain, source, analyser } }) {
-  gain.gain.linearRampToValueAtTime(0, context.currentTime + attack);
+function noteRelease({ release, node: { gain, source, analyser } }) {
+  gain.gain.linearRampToValueAtTime(0, context.currentTime + release);
   setTimeout(() => {
     [gain, source, analyser].forEach(node => {
       node.disconnect();
     });
-  }, attack * 1000);
+  }, release * 1000);
 }
 
 function getWaveforms(notes) {
@@ -52,7 +52,7 @@ function getWaveforms(notes) {
     const waveforms = notes.map(({ id, node: { analyser } }) => {
       const waveform = new Float32Array(analyser.frequencyBinCount);
       analyser.getFloatTimeDomainData(waveform);
-      return { id, waveform: Array.from(waveform) };
+      return { id, data: Array.from(waveform) };
     });
 
     app.ports.waveforms.send(waveforms);
