@@ -14,7 +14,7 @@ function buildNode(source) {
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
   const node = buildNode(context.createMediaStreamSource(stream));
-  app.ports.notePressed.send({ id: 'mic', attack: 0, frequency: 0, node });
+  app.ports.notePressed.send({ id: 777, node });
 });
 
 const app = Elm.Main.init({

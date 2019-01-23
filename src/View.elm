@@ -131,16 +131,23 @@ view model =
                 , style "stroke-opacity" "0.5"
                 , style "stroke-width" "0.03"
                 ]
-                (List.indexedMap
-                    (\noteId color ->
-                        case Dict.get noteId model.waveforms of
-                            Just waveform ->
-                                noteWave color (model.zoom * 10) svgWidth waveform
+                ((case Dict.get 777 model.waveforms of
+                    Just mic ->
+                        noteWave "black" (model.zoom * 10) svgWidth mic
 
-                            Nothing ->
-                                path [] []
-                    )
-                    colors
+                    Nothing ->
+                        path [] []
+                 )
+                    :: List.indexedMap
+                        (\noteId color ->
+                            case Dict.get noteId model.waveforms of
+                                Just waveform ->
+                                    noteWave color (model.zoom * 10) svgWidth waveform
+
+                                Nothing ->
+                                    path [] []
+                        )
+                        colors
                 )
             ]
         , div
