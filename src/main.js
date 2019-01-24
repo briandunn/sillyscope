@@ -32,7 +32,10 @@ function notePress({ id, frequency, attack, type }) {
 }
 
 function activateMic({ id }) {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+  Promise.all([
+    context.resume(),
+    navigator.mediaDevices.getUserMedia({ audio: true }),
+  ]).then(([_, stream]) => {
     const node = buildNode(context.createMediaStreamSource(stream));
     app.ports.addAudioSource.send({ id, node });
   });
