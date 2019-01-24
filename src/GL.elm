@@ -3,32 +3,36 @@ module GL exposing (entities)
 import Dict exposing (get)
 import List exposing (foldr, indexedMap, length)
 import Math.Vector2 exposing (vec2)
-import Math.Vector3 exposing (vec3)
+import Math.Vector3 exposing (Vec3, vec3)
 import WebGL exposing (entity, triangleStrip)
 import WebGL.Settings.Blend as Blend
 
 
-noteToEntity note color =
-    WebGL.entityWith [ Blend.add Blend.srcAlpha Blend.oneMinusSrcAlpha ] vertexShader fragmentShader (mesh note.waveform) { color = color, samples = note.waveform |> length |> toFloat }
+noteToEntity waveform color =
+    WebGL.entityWith
+        [ Blend.add Blend.srcAlpha Blend.oneMinusSrcAlpha ]
+        vertexShader
+        fragmentShader
+        (mesh waveform)
+        { color = color, samples = waveform |> length |> toFloat }
 
 
 colorToVec ( r, g, b ) =
     vec3 (r / 255.0) (g / 255.0) (b / 255.0)
 
 
-entities colors model =
-    colors
-        |> indexedMap (\i c -> ( i, c ))
-        |> foldr
-            (\( i, color ) es ->
-                case get i model.notes of
-                    Just note ->
-                        noteToEntity note (colorToVec color) :: es
-
-                    Nothing ->
-                        es
+entities colors { waveforms } =
+    let
+        getColor : Int -> Vec3
+        getColor i =
+            colors |> List.drop i |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
+    in
+    waveforms
+        |> Dict.toList
+        |> List.map
+            (\( id, waveform ) ->
+                noteToEntity waveform (getColor id)
             )
-            []
 
 
 type alias VirtexAttributes =
@@ -53,7 +57,7 @@ vertexShader =
 
     void main () {
         float x = ((i / samples) * 2.0) - 1.0;
-        float delta = (isEven(i) ? 1.0 : -1.0) * 0.03;
+        float delta = (isEven(i) ? 1.0 : -1.0) * 0.01;
 
         gl_Position = vec4(x + delta,val + delta, 0.0, 1.0);
     }

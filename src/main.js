@@ -2,41 +2,53 @@ import { Elm } from './Main.elm';
 
 const context = new AudioContext();
 
+function buildNode(source) {
+  const gain = context.createGain();
+  const analyser = context.createAnalyser();
+  analyser.fftSize = 4096;
+  gain.gain.value = 0;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.connect(analyser);
+  return { source, gain, analyser };
+}
+
 const app = Elm.Main.init({
   node: document.querySelector('main'),
 });
 
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
-  const gain = context.createGain();
-  const analyser = context.createAnalyser();
-  analyser.fftSize = 4096;
-  osc.connect(gain);
   osc.frequency.value = frequency;
-  gain.gain.value = 0;
+  const { gain, ...node } = buildNode(osc);
+
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
-  gain.connect(context.destination);
-  osc.connect(analyser);
   osc.type = type;
   osc.start(0);
 
-  app.ports.notePressed.send({
+  app.ports.addAudioSource.send({
     id,
-    frequency,
-    attack,
-    node: {
-      analyser,
-      gain,
-      osc,
-    },
+    node: { ...node, gain },
   });
 }
 
-function noteRelease({ attack, node: { osc, analyser, gain } }) {
-  gain.gain.linearRampToValueAtTime(0, context.currentTime + attack);
+function activateMic({ id }) {
+  Promise.all([
+    context.resume(),
+    navigator.mediaDevices.getUserMedia({ audio: true }),
+  ]).then(([_, stream]) => {
+    const node = buildNode(context.createMediaStreamSource(stream));
+    app.ports.addAudioSource.send({ id, node });
+  });
+}
+
+function releaseAudioSource({ release, node: { gain, source, analyser } }) {
+  gain.gain.linearRampToValueAtTime(0, context.currentTime + release);
   setTimeout(() => {
-    [osc, gain, analyser].forEach(node => node.disconnect());
-  }, attack * 1000);
+    [gain, source, analyser].forEach(node => {
+      node.disconnect();
+    });
+  }, release * 1000);
 }
 
 function getWaveforms(notes) {
@@ -44,7 +56,7 @@ function getWaveforms(notes) {
     const waveforms = notes.map(({ id, node: { analyser } }) => {
       const waveform = new Float32Array(analyser.frequencyBinCount);
       analyser.getFloatTimeDomainData(waveform);
-      return { id, waveform: Array.from(waveform) };
+      return { id, data: Array.from(waveform) };
     });
 
     app.ports.waveforms.send(waveforms);
@@ -53,8 +65,9 @@ function getWaveforms(notes) {
 
 const subscriptions = {
   notePress,
-  noteRelease,
+  releaseAudioSource,
   getWaveforms,
+  activateMic,
 };
 
 for (const portName in subscriptions) {

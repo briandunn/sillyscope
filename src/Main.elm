@@ -6,13 +6,13 @@ import Browser.Events
 import Dict exposing (Dict)
 import Json.Decode as Json
 import Json.Encode
-import Model exposing (Action(..), Model, Note, ViewportAction(..), WidthHeight, ZoomAction(..))
+import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), micId)
 import OscilatorType exposing (OscilatorType(..))
 import Task exposing (attempt, perform)
 import View exposing (view)
 
 
-port noteRelease : Json.Value -> Cmd msg
+port releaseAudioSource : Json.Value -> Cmd msg
 
 
 port notePress : Json.Value -> Cmd msg
@@ -21,7 +21,10 @@ port notePress : Json.Value -> Cmd msg
 port getWaveforms : Json.Value -> Cmd msg
 
 
-port notePressed : (Json.Encode.Value -> msg) -> Sub msg
+port activateMic : Json.Value -> Cmd msg
+
+
+port addAudioSource : (Json.Encode.Value -> msg) -> Sub msg
 
 
 port waveforms : (Json.Encode.Value -> msg) -> Sub msg
@@ -29,7 +32,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { notes = Dict.empty, zoom = 1, zoomStart = Nothing, wrapperElement = Nothing, oscilatorType = Sine }
+    ( { waveforms = Dict.empty, audioSources = Dict.empty, zoom = 1, zoomStart = Nothing, wrapperElement = Nothing, oscilatorType = Sine }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
 
@@ -38,8 +41,8 @@ subscriptions : Model -> Sub Action
 subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
-        , waveforms Waveform
-        , notePressed NotePressed
+        , waveforms UpdateWaveform
+        , addAudioSource AddAudioSource
         ]
 
 
@@ -72,27 +75,27 @@ buildNoteCommand n ot =
     json |> notePress
 
 
-buildReleaseCommand note =
-    [ ( "attack", Json.Encode.float note.attack ), ( "node", note.node ) ] |> Json.Encode.object |> noteRelease
+buildReleaseCommand { node } =
+    [ ( "release", Json.Encode.float 0.5 ), ( "node", node ) ] |> Json.Encode.object |> releaseAudioSource
 
 
-decodeNote : Json.Value -> Result Json.Error Note
+decodeNote : Json.Value -> Result Json.Error AudioSource
 decodeNote note =
     let
         decoder =
-            Json.map6 Note (Json.field "id" Json.int) (Json.field "frequency" Json.float) (Json.field "attack" Json.float) (Json.field "node" Json.value) (Json.succeed []) (Json.succeed Sine)
+            Json.map2 AudioSource (Json.field "id" Json.int) (Json.field "node" Json.value)
     in
     note |> Json.decodeValue decoder
 
 
 type alias WaveformMessage =
-    { id : Int, waveform : List Float }
+    { id : Int, data : Waveform }
 
 
 decodeWaveforms forms model =
     let
         decoder =
-            Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "waveform" (Json.list Json.float))
+            Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "data" (Json.list Json.float))
                 |> Json.list
 
         decodedWaveform =
@@ -111,10 +114,19 @@ decodeWaveforms forms model =
 
         trim wf =
             wf |> Model.dropToLocalMinimum |> List.take frameCount
+
+        fold : WaveformMessage -> Dict Int Waveform -> Dict Int Waveform
+        fold { id, data } currentForms =
+            case Dict.get id model.audioSources of
+                Just _ ->
+                    Dict.insert id (trim data) currentForms
+
+                Nothing ->
+                    Dict.remove id currentForms
     in
-    case decodedWaveform of
+    case Json.decodeValue decoder forms of
         Ok wfs ->
-            { model | notes = List.foldl (\wf notes -> Dict.update wf.id (updateNote (trim wf.waveform)) notes) model.notes wfs }
+            { model | waveforms = List.foldl fold model.waveforms wfs }
 
         Err _ ->
             model
@@ -124,27 +136,22 @@ update : Action -> Model -> ( Model, Cmd Action )
 update action model =
     case action of
         ToggleKey i ->
-            case Dict.get i model.notes of
-                Just note ->
-                    ( { model | notes = Dict.remove i model.notes }, buildReleaseCommand note )
-
-                Nothing ->
-                    ( model, buildNoteCommand i model.oscilatorType )
+            toggleAudioSource i model |> Maybe.withDefault ( model, buildNoteCommand i model.oscilatorType )
 
         SetOscilatorType oscilatorType ->
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
-        Waveform forms ->
-            ( decodeWaveforms forms model, buildGetWaveformsCommand model.notes )
+        UpdateWaveform forms ->
+            ( decodeWaveforms forms model, buildGetWaveformsCommand model.audioSources )
 
-        NotePressed note ->
+        AddAudioSource note ->
             case decodeNote note of
                 Ok o ->
                     let
-                        notes =
-                            Dict.insert o.id o model.notes
+                        audioSources =
+                            Dict.insert o.id o model.audioSources
                     in
-                    ( { model | notes = notes }, buildGetWaveformsCommand notes )
+                    ( { model | audioSources = audioSources }, buildGetWaveformsCommand audioSources )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -185,6 +192,24 @@ update action model =
                 ZoomStop ->
                     { model | zoomStart = Nothing }
             , Cmd.none
+            )
+
+        ToggleMic ->
+            toggleAudioSource micId model
+                |> Maybe.withDefault ( model, [ ( "id", Json.Encode.int micId ) ] |> Json.Encode.object |> activateMic )
+
+
+toggleAudioSource : Int -> Model -> Maybe ( Model, Cmd a )
+toggleAudioSource id model =
+    model.audioSources
+        |> Dict.get id
+        |> Maybe.map
+            (\audioSource ->
+                ( { model
+                    | audioSources = Dict.remove id model.audioSources
+                  }
+                , buildReleaseCommand audioSource
+                )
             )
 
 
