@@ -21,13 +21,22 @@ port notePress : Json.Value -> Cmd msg
 port getWaveforms : Json.Value -> Cmd msg
 
 
+port getFfts : Json.Value -> Cmd msg
+
+
 port activateMic : Json.Value -> Cmd msg
 
 
 port addAudioSource : (Json.Encode.Value -> msg) -> Sub msg
 
 
+port addDominantFreq : (Json.Encode.Value -> msg) -> Sub msg
+
+
 port waveforms : (Json.Encode.Value -> msg) -> Sub msg
+
+
+port ffts : (Json.Encode.Value -> msg) -> Sub msg
 
 
 init : () -> ( Model, Cmd Action )
@@ -43,6 +52,8 @@ subscriptions model =
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
         , waveforms UpdateWaveform
         , addAudioSource AddAudioSource
+        , ffts UpdateFfts
+        , addDominantFreq AddDominantFreq
         ]
 
 
@@ -92,18 +103,26 @@ type alias WaveformMessage =
     { id : Int, data : Waveform }
 
 
-decodeWaveforms forms model =
+decodeDataPayload : Json.Value -> Result Json.Error (Dict Int Waveform)
+decodeDataPayload payload =
     let
         decoder =
             Json.map2 WaveformMessage (Json.field "id" Json.int) (Json.field "data" (Json.list Json.float))
                 |> Json.list
 
-        decodedWaveform =
-            Json.decodeValue decoder forms
+        fold messages =
+            messages |> List.map (\{ id, data } -> ( id, data )) |> Dict.fromList
+    in
+    Json.decodeValue decoder payload |> Result.map fold
 
-        updateNote wf note =
-            Maybe.map (\n -> { n | waveform = wf }) note
 
+mapDict : (a -> b) -> Dict comparable a -> Dict comparable b
+mapDict fn dict =
+    Dict.foldl (\k v b -> Dict.insert k (fn v) b) Dict.empty dict
+
+
+decodeWaveforms forms model =
+    let
         frameCount =
             case model.wrapperElement of
                 Nothing ->
@@ -112,21 +131,13 @@ decodeWaveforms forms model =
                 Just element ->
                     round (element.element.width * model.zoom)
 
+        trim : Waveform -> Waveform
         trim wf =
             wf |> Model.dropToLocalMinimum |> List.take frameCount
-
-        fold : WaveformMessage -> Dict Int Waveform -> Dict Int Waveform
-        fold { id, data } currentForms =
-            case Dict.get id model.audioSources of
-                Just _ ->
-                    Dict.insert id (trim data) currentForms
-
-                Nothing ->
-                    Dict.remove id currentForms
     in
-    case Json.decodeValue decoder forms of
+    case decodeDataPayload forms of
         Ok wfs ->
-            { model | waveforms = List.foldl fold model.waveforms wfs }
+            { model | waveforms = mapDict trim wfs }
 
         Err _ ->
             model
@@ -144,6 +155,15 @@ update action model =
         UpdateWaveform forms ->
             ( decodeWaveforms forms model, buildGetWaveformsCommand model.audioSources )
 
+        UpdateFfts fft ->
+            case decodeDataPayload fft of
+                Err _ ->
+                    ( model, Cmd.none )
+
+                Ok data ->
+                    --   ( { model | ffts = Dict. id data model.ffts }, getFfts )
+                    ( model, Json.Encode.array [] |> getFfts )
+
         AddAudioSource note ->
             case decodeNote note of
                 Ok o ->
@@ -155,6 +175,9 @@ update action model =
 
                 Err _ ->
                     ( model, Cmd.none )
+
+        AddDominantFreq freq ->
+            ( model, Cmd.none )
 
         Viewport viewPortAction ->
             let

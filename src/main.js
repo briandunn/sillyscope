@@ -13,6 +13,22 @@ function buildNode(source) {
   return { source, gain, analyser };
 }
 
+function getFft(analyser) {
+  const list = new Float32Array(analyser.frequencyBinCount);
+  analyser.getFloatFrequencyData(list);
+  return list;
+}
+
+function dominantFreq(analyzer) {
+  const list = getFft(analyzer);
+  return (
+    list.reduce(([max, j], x, i) => (max < x ? [x, i] : [max, j]), [
+      -1000,
+      -1000,
+    ]) / list.length
+  );
+}
+
 const app = Elm.Main.init({
   node: document.querySelector('main'),
 });
@@ -20,15 +36,16 @@ const app = Elm.Main.init({
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
   osc.frequency.value = frequency;
-  const { gain, ...node } = buildNode(osc);
+  const { gain, analyser, ...node } = buildNode(osc);
 
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
   osc.type = type;
   osc.start(0);
 
+  app.ports.addDominantFreq.send({ id, freq: dominantFreq(analyser) });
   app.ports.addAudioSource.send({
     id,
-    node: { ...node, gain },
+    node: { gain, analyser, ...node },
   });
 }
 
@@ -39,6 +56,7 @@ function activateMic({ id }) {
   ]).then(([_, stream]) => {
     const node = buildNode(context.createMediaStreamSource(stream));
     app.ports.addAudioSource.send({ id, node });
+    getFfts([{ id, node }]); // seems a bit like cheatin
   });
 }
 
@@ -49,6 +67,17 @@ function releaseAudioSource({ release, node: { gain, source, analyser } }) {
       node.disconnect();
     });
   }, release * 1000);
+}
+
+function getFfts(nodes) {
+  requestAnimationFrame(() => {
+    app.ports.ffts.send(
+      nodes.map(({ id, node: { analyser } }) => ({
+        id,
+        data: Array.from(getFft(analyser)),
+      }))
+    );
+  });
 }
 
 function getWaveforms(notes) {
@@ -64,10 +93,11 @@ function getWaveforms(notes) {
 }
 
 const subscriptions = {
+  activateMic,
+  getFfts,
+  getWaveforms,
   notePress,
   releaseAudioSource,
-  getWaveforms,
-  activateMic,
 };
 
 for (const portName in subscriptions) {
