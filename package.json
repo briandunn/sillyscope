@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "parcel build src/index.html --public-url '/sillyscope'",
+    "build": "parcel build src/index.html --public-url './'",
     "deploy": "gh-pages-deploy -- 'boom'",
     "start": "parcel src/index.html"
   },
