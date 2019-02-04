@@ -1,8 +1,6 @@
 module PathDefinition exposing (PathCommand(..), toString)
 
-
-type alias Point =
-    { x : Float, y : Float }
+import Model exposing (Point)
 
 
 type PathCommand

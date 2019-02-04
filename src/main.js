@@ -13,20 +13,10 @@ function buildNode(source) {
   return { source, gain, analyser };
 }
 
-function getFft(analyser) {
+function getArray(analyser, name) {
   const list = new Float32Array(analyser.frequencyBinCount);
-  analyser.getFloatFrequencyData(list);
-  return list;
-}
-
-function dominantFreq(analyzer) {
-  const list = getFft(analyzer);
-  return (
-    list.reduce(([max, j], x, i) => (max < x ? [x, i] : [max, j]), [
-      -1000,
-      -1000,
-    ]) / list.length
-  );
+  analyser[name](list);
+  return Array.from(list);
 }
 
 const app = Elm.Main.init({
@@ -41,8 +31,6 @@ function notePress({ id, frequency, attack, type }) {
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
   osc.type = type;
   osc.start(0);
-
-  app.ports.addDominantFreq.send({ id, freq: dominantFreq(analyser) });
   app.ports.addAudioSource.send({
     id,
     node: { gain, analyser, ...node },
@@ -56,7 +44,6 @@ function activateMic({ id }) {
   ]).then(([_, stream]) => {
     const node = buildNode(context.createMediaStreamSource(stream));
     app.ports.addAudioSource.send({ id, node });
-    getFfts([{ id, node }]); // seems a bit like cheatin
   });
 }
 
@@ -69,28 +56,19 @@ function releaseAudioSource({ release, node: { gain, source, analyser } }) {
   }, release * 1000);
 }
 
-function getFfts(nodes) {
+const analyze = (port, fn) => nodes => {
   requestAnimationFrame(() => {
-    app.ports.ffts.send(
+    port.send(
       nodes.map(({ id, node: { analyser } }) => ({
         id,
-        data: Array.from(getFft(analyser)),
+        data: getArray(analyser, fn),
       }))
     );
   });
-}
+};
 
-function getWaveforms(notes) {
-  requestAnimationFrame(() => {
-    const waveforms = notes.map(({ id, node: { analyser } }) => {
-      const waveform = new Float32Array(analyser.frequencyBinCount);
-      analyser.getFloatTimeDomainData(waveform);
-      return { id, data: Array.from(waveform) };
-    });
-
-    app.ports.waveforms.send(waveforms);
-  });
-}
+const getWaveforms = analyze(app.ports.waveforms, 'getFloatTimeDomainData');
+const getFfts = analyze(app.ports.ffts, 'getFloatFrequencyData');
 
 const subscriptions = {
   activateMic,

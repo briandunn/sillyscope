@@ -1,10 +1,20 @@
-module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum, micId)
+module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum, init, micId)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
 import Json.Decode as D
 import Json.Encode as E
-import OscilatorType exposing (OscilatorType)
+import OscilatorType exposing (OscilatorType(..))
+import Task exposing (attempt, perform)
+import Waveform
+
+
+type alias Waveform =
+    Waveform.Waveform
+
+
+dropToLocalMinimum =
+    Waveform.dropToLocalMinimum
 
 
 type ViewportAction
@@ -27,20 +37,21 @@ type Action
     | UpdateWaveform E.Value
     | UpdateFfts E.Value
     | AddAudioSource D.Value
-    | AddDominantFreq D.Value
     | SetOscilatorType OscilatorType
 
 
+type alias Analysis =
+    { waveform : Waveform, fft : Waveform, dominantFreq : Int }
+
+
 type alias AudioSource =
-    { id : Int, node : D.Value }
-
-
-type alias Waveform =
-    List Float
+    { id : Int, node : D.Value, analysis : Maybe Analysis }
 
 
 type alias Model =
     { waveforms : Dict Int Waveform
+    , dominantFrequencies : Dict Int Int
+    , ffts : Dict Int Waveform
     , audioSources : Dict Int AudioSource
     , zoom : Float
     , zoomStart : Maybe Point
@@ -61,25 +72,16 @@ type alias WidthHeight =
     { width : Int, height : Int }
 
 
-dropWhileFirstTwo test list =
-    case list of
-        first :: second :: tail ->
-            if test first second then
-                dropWhileFirstTwo test (second :: tail)
-
-            else
-                list
-
-        first :: tail ->
-            list
-
-        [] ->
-            []
-
-
-dropToLocalMinimum : List Float -> List Float
-dropToLocalMinimum values =
-    values
-        |> dropWhileFirstTwo (\a b -> (a > 0 && b > 0) || (a <= 0 && b <= 0))
-        |> List.drop 1
-        |> dropWhileFirstTwo (\a b -> a > 0 && b > 0)
+init : () -> ( Model, Cmd Action )
+init () =
+    ( { waveforms = Dict.empty
+      , audioSources = Dict.empty
+      , ffts = Dict.empty
+      , dominantFrequencies = Dict.empty
+      , zoom = 1
+      , zoomStart = Nothing
+      , wrapperElement = Nothing
+      , oscilatorType = Sine
+      }
+    , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
+    )

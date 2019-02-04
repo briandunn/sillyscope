@@ -21,11 +21,20 @@ colorToVec ( r, g, b ) =
     vec3 (r / 255.0) (g / 255.0) (b / 255.0)
 
 
-entities colors { waveforms } =
+fftToColor ffts =
+    case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
+        [ r, g, b ] ->
+            vec3 r g b
+
+        _ ->
+            vec3 0 0 0
+
+
+entities colors { waveforms, ffts } =
     let
         getColor : Int -> Vec3
         getColor i =
-            colors |> List.drop i |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
+            colors |> List.drop i |> List.head |> Maybe.map colorToVec |> Maybe.withDefault (fftToColor ffts)
     in
     waveforms
         |> Dict.toList
