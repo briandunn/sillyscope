@@ -4,6 +4,7 @@ import Dict exposing (get)
 import List exposing (foldr, indexedMap, length)
 import Math.Vector2 exposing (vec2)
 import Math.Vector3 exposing (Vec3, vec3)
+import Model exposing (AudioSource)
 import WebGL exposing (entity, triangleStrip)
 import WebGL.Settings.Blend as Blend
 
@@ -22,26 +23,34 @@ colorToVec ( r, g, b ) =
 
 
 fftToColor ffts =
-    case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
-        [ r, g, b ] ->
+    (case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
+        r :: g :: b :: _ ->
             vec3 r g b
 
         _ ->
             vec3 0 0 0
+    )
+        |> Debug.log "color"
 
 
-entities colors { waveforms, ffts } =
+entities colors { audioSources } =
     let
         getColor : Int -> Vec3
         getColor i =
-            colors |> List.drop i |> List.head |> Maybe.map colorToVec |> Maybe.withDefault (fftToColor ffts)
+            colors |> List.drop i |> List.head |> Maybe.map colorToVec |> Maybe.withDefault (fftToColor Dict.empty)
+
+        fold : ( Int, AudioSource ) -> List WebGL.Entity -> List WebGL.Entity
+        fold ( id, { analysis } ) list =
+            case analysis of
+                Just { waveform } ->
+                    noteToEntity waveform (getColor id) :: list
+
+                Nothing ->
+                    list
     in
-    waveforms
+    audioSources
         |> Dict.toList
-        |> List.map
-            (\( id, waveform ) ->
-                noteToEntity waveform (getColor id)
-            )
+        |> List.foldr fold []
 
 
 type alias VirtexAttributes =

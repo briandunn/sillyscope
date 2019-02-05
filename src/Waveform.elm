@@ -1,16 +1,13 @@
-module Waveform exposing (Waveform, decodeFfts, decodeWaveforms, dropToLocalMinimum)
+module Waveform exposing (decodeFfts, decodeWaveforms, dropToLocalMinimum)
 
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
+import Model exposing (AudioSource, Waveform)
 
 
 
 -- import Model exposing (Model)
-
-
-type alias Waveform =
-    List Float
 
 
 type alias WaveformMessage =
@@ -77,12 +74,24 @@ decodeWaveforms forms model =
                     round (element.element.width * model.zoom)
 
         trim : Waveform -> Waveform
-        trim wf =
-            wf |> dropToLocalMinimum |> List.take frameCount
+        trim =
+            dropToLocalMinimum >> List.take frameCount
+
+        update : Waveform -> AudioSource -> AudioSource
+        update waveform audioSource =
+            { audioSource | analysis = Just { waveform = trim waveform } }
+
+        fold : ( Int, Waveform ) -> Dict Int AudioSource -> Dict Int AudioSource
+        fold ( id, waveform ) sources =
+            Dict.update id (Maybe.map (update waveform)) sources
+
+        addWaveforms : Dict Int AudioSource -> Dict Int Waveform -> Dict Int AudioSource
+        addWaveforms sources waveforms =
+            waveforms |> Dict.toList |> List.foldr fold sources
     in
     case decodeDataPayload forms of
         Ok wfs ->
-            { model | waveforms = mapDict trim (Dict.filter (\k _ -> Dict.member k model.audioSources) wfs) }
+            { model | audioSources = addWaveforms model.audioSources wfs }
 
         Err _ ->
             model
@@ -108,7 +117,8 @@ dominant count =
 decodeFfts ffts model =
     case decodeDataPayload ffts of
         Ok f ->
-            { model | ffts = mapDict (dominant 12) f }
+            -- { model | ffts = mapDict (dominant 12) f }
+            model
 
         Err _ ->
             model

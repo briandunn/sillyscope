@@ -10,7 +10,7 @@ import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Wavef
 import Ports exposing (decodeAudioSource, encodeGetFftsCommand, encodeGetWaveformsCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
-import Waveform exposing (Waveform, decodeFfts, decodeWaveforms)
+import Waveform exposing (decodeFfts, decodeWaveforms)
 
 
 port releaseAudioSource : Json.Decode.Value -> Cmd msg

@@ -1,4 +1,4 @@
-module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), dropToLocalMinimum, init, micId)
+module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
@@ -6,15 +6,10 @@ import Json.Decode as D
 import Json.Encode as E
 import OscilatorType exposing (OscilatorType(..))
 import Task exposing (attempt, perform)
-import Waveform
 
 
 type alias Waveform =
-    Waveform.Waveform
-
-
-dropToLocalMinimum =
-    Waveform.dropToLocalMinimum
+    List Float
 
 
 type ViewportAction
@@ -41,7 +36,8 @@ type Action
 
 
 type alias Analysis =
-    { waveform : Waveform, fft : Waveform, dominantFreq : Int }
+    -- { waveform : Waveform, frequencies : Waveform }
+    { waveform : Waveform }
 
 
 type alias AudioSource =
@@ -49,10 +45,7 @@ type alias AudioSource =
 
 
 type alias Model =
-    { waveforms : Dict Int Waveform
-    , dominantFrequencies : Dict Int Int
-    , ffts : Dict Int Waveform
-    , audioSources : Dict Int AudioSource
+    { audioSources : Dict Int AudioSource
     , zoom : Float
     , zoomStart : Maybe Point
     , wrapperElement : Maybe Element
@@ -74,10 +67,7 @@ type alias WidthHeight =
 
 init : () -> ( Model, Cmd Action )
 init () =
-    ( { waveforms = Dict.empty
-      , audioSources = Dict.empty
-      , ffts = Dict.empty
-      , dominantFrequencies = Dict.empty
+    ( { audioSources = Dict.empty
       , zoom = 1
       , zoomStart = Nothing
       , wrapperElement = Nothing
