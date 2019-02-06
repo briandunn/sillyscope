@@ -3,11 +3,7 @@ module Waveform exposing (decodeFfts, decodeWaveforms, dropToLocalMinimum)
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
-import Model exposing (AudioSource, Waveform)
-
-
-
--- import Model exposing (Model)
+import Model exposing (Analysis, AudioSource, Model, Waveform)
 
 
 type alias WaveformMessage =
@@ -59,12 +55,24 @@ mapDict fn dict =
     Dict.foldl (\k v b -> Dict.insert k (fn v) b) Dict.empty dict
 
 
+updateAnalysis : (Maybe Analysis -> Waveform -> Maybe Analysis) -> Dict Int Waveform -> Dict Int AudioSource -> Dict Int AudioSource
+updateAnalysis fn waveforms sources =
+    let
+        update : Waveform -> AudioSource -> AudioSource
+        update waveform audioSource =
+            { audioSource | analysis = fn audioSource.analysis waveform }
 
--- decodeWaveforms : Json.Decode.Value -> Model -> Model
+        fold : ( Int, Waveform ) -> Dict Int AudioSource -> Dict Int AudioSource
+        fold ( id, waveform ) s =
+            Dict.update id (Maybe.map (update waveform)) s
+    in
+    waveforms |> Dict.toList |> List.foldr fold sources
 
 
+decodeWaveforms : Json.Decode.Value -> Model -> Model
 decodeWaveforms forms model =
     let
+        frameCount : Int
         frameCount =
             case model.wrapperElement of
                 Nothing ->
@@ -77,48 +85,51 @@ decodeWaveforms forms model =
         trim =
             dropToLocalMinimum >> List.take frameCount
 
-        update : Waveform -> AudioSource -> AudioSource
-        update waveform audioSource =
-            { audioSource | analysis = Just { waveform = trim waveform } }
+        update analysis waveform =
+            case analysis of
+                Just a ->
+                    Just { a | waveform = trim waveform }
 
-        fold : ( Int, Waveform ) -> Dict Int AudioSource -> Dict Int AudioSource
-        fold ( id, waveform ) sources =
-            Dict.update id (Maybe.map (update waveform)) sources
-
-        addWaveforms : Dict Int AudioSource -> Dict Int Waveform -> Dict Int AudioSource
-        addWaveforms sources waveforms =
-            waveforms |> Dict.toList |> List.foldr fold sources
+                Nothing ->
+                    Just { waveform = trim waveform, frequencies = [] }
     in
     case decodeDataPayload forms of
         Ok wfs ->
-            { model | audioSources = addWaveforms model.audioSources wfs }
+            { model
+                | audioSources = updateAnalysis update wfs model.audioSources
+            }
 
         Err _ ->
             model
 
 
-
--- decodeFfts : Json.Decode.Value -> Model -> Model
-
-
-dominant count =
-    \values ->
-        let
-            valueCount =
-                values |> List.length |> toFloat
-        in
-        values
-            |> List.indexedMap Tuple.pair
-            |> List.sortBy Tuple.second
-            |> List.take count
-            |> List.map (\( i, v ) -> toFloat i / valueCount)
+dominant : Int -> Waveform -> Waveform
+dominant count values =
+    let
+        valueCount =
+            values |> List.length |> toFloat
+    in
+    values
+        |> List.indexedMap Tuple.pair
+        |> List.sortBy Tuple.second
+        |> List.take count
+        |> List.map (\( i, v ) -> toFloat i / valueCount)
 
 
+decodeFfts : Json.Decode.Value -> Model -> Model
 decodeFfts ffts model =
+    let
+        update analysis frequencies =
+            case analysis of
+                Just a ->
+                    Just { a | frequencies = dominant 12 frequencies }
+
+                Nothing ->
+                    Just { frequencies = dominant 12 frequencies, waveform = [] }
+    in
     case decodeDataPayload ffts of
         Ok f ->
-            -- { model | ffts = mapDict (dominant 12) f }
-            model
+            { model | audioSources = updateAnalysis update f model.audioSources }
 
         Err _ ->
             model

@@ -1,4 +1,4 @@
-module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
+module Model exposing (Action(..), Analysis, AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
@@ -36,8 +36,7 @@ type Action
 
 
 type alias Analysis =
-    -- { waveform : Waveform, frequencies : Waveform }
-    { waveform : Waveform }
+    { waveform : Waveform, frequencies : Waveform }
 
 
 type alias AudioSource =
