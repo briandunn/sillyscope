@@ -5,10 +5,12 @@ const context = new AudioContext();
 function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  analyser.fftSize = 4096;
+  analyser.fftSize = 8192;
+
+  analyser.smoothingTimeConstant = 0;
   gain.gain.value = 0;
   source.connect(gain);
-  gain.connect(context.destination);
+  // gain.connect(context.destination);
   source.connect(analyser);
   return { source, gain, analyser };
 }

@@ -50,11 +50,6 @@ decodeDataPayload payload =
     Json.Decode.decodeValue decoder payload |> Result.map fold
 
 
-mapDict : (a -> b) -> Dict comparable a -> Dict comparable b
-mapDict fn dict =
-    Dict.foldl (\k v b -> Dict.insert k (fn v) b) Dict.empty dict
-
-
 updateAnalysis : (Maybe Analysis -> Waveform -> Maybe Analysis) -> Dict Int Waveform -> Dict Int AudioSource -> Dict Int AudioSource
 updateAnalysis fn waveforms sources =
     let
@@ -112,8 +107,10 @@ dominant count values =
     values
         |> List.indexedMap Tuple.pair
         |> List.sortBy Tuple.second
-        |> List.take count
-        |> List.map (\( i, v ) -> toFloat i / valueCount)
+        |> List.reverse
+        |> List.take 5
+        |> List.map (\( i, _ ) -> toFloat i)
+        |> Debug.log "fft"
 
 
 decodeFfts : Json.Decode.Value -> Model -> Model

@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
 import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
-import Ports exposing (decodeAudioSource, encodeGetFftsCommand, encodeGetWaveformsCommand, encodeNoteCommand, encodeReleaseCommand)
+import Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
 import Waveform exposing (decodeFfts, decodeWaveforms)
@@ -65,18 +65,13 @@ type alias FreqMessage =
 
 
 buildGetWaveFormsCommand { audioSources } =
-    Cmd.batch
-        ((audioSources
-            |> encodeGetWaveformsCommand
-            |> getWaveforms
-         )
-            :: (if Dict.member micId audioSources then
-                    [ audioSources |> Dict.filter (\k _ -> k == micId) |> encodeGetWaveformsCommand |> getFfts ]
-
-                else
-                    []
-               )
-        )
+    let
+        payload =
+            encodeGetAnalysisCommand audioSources
+    in
+    [ getWaveforms, getFfts ]
+        |> List.map (\fn -> fn payload)
+        |> Cmd.batch
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -94,13 +89,13 @@ update action model =
                 Cmd.none
 
               else
-                encodeGetWaveformsCommand model.audioSources |> getWaveforms
+                model.audioSources |> encodeGetAnalysisCommand |> getWaveforms
             )
 
         UpdateFfts fft ->
             ( decodeFfts fft model
             , if Dict.member micId model.audioSources then
-                model.audioSources |> encodeGetFftsCommand |> getFfts
+                model.audioSources |> encodeGetAnalysisCommand |> getFfts
 
               else
                 Cmd.none

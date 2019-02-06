@@ -1,4 +1,4 @@
-module Ports exposing (decodeAudioSource, encodeGetFftsCommand, encodeGetWaveformsCommand, encodeNoteCommand, encodeReleaseCommand)
+module Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 
 import Dict exposing (Dict)
 import Json.Decode
@@ -38,21 +38,8 @@ decodeAudioSource note =
     note |> Json.Decode.decodeValue decoder
 
 
-encodeGetWaveformsCommand : Dict Int AudioSource -> Json.Encode.Value
-encodeGetWaveformsCommand nodes =
-    nodes
-        |> Dict.values
-        |> Json.Encode.list
-            (\node ->
-                Json.Encode.object
-                    [ ( "id", Json.Encode.int node.id )
-                    , ( "node", node.node )
-                    ]
-            )
-
-
-encodeGetFftsCommand : Dict Int AudioSource -> Json.Encode.Value
-encodeGetFftsCommand nodes =
+encodeGetAnalysisCommand : Dict Int AudioSource -> Json.Encode.Value
+encodeGetAnalysisCommand nodes =
     nodes
         |> Dict.values
         |> Json.Encode.list

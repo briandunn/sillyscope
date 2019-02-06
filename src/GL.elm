@@ -23,14 +23,12 @@ colorToVec ( r, g, b ) =
 
 
 fftToColor ffts =
-    (case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
+    case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
         r :: g :: b :: _ ->
             vec3 r g b
 
         _ ->
             vec3 0 0 0
-    )
-        |> Debug.log "color"
 
 
 entities colors { audioSources } =
