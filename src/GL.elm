@@ -1,10 +1,11 @@
 module GL exposing (entities)
 
-import Dict exposing (get)
+import Dict exposing (Dict, get)
 import List exposing (foldr, indexedMap, length)
 import Math.Vector2 exposing (vec2)
 import Math.Vector3 exposing (Vec3, vec3)
-import Model exposing (AudioSource)
+import Model exposing (Analysis, AudioSource, micId)
+import Set
 import WebGL exposing (entity, triangleStrip)
 import WebGL.Settings.Blend as Blend
 
@@ -22,26 +23,39 @@ colorToVec ( r, g, b ) =
     vec3 (r / 255.0) (g / 255.0) (b / 255.0)
 
 
-fftToColor ffts =
-    case ffts |> Dict.values |> List.head |> Maybe.withDefault [] of
-        r :: g :: b :: _ ->
-            vec3 r g b
-
-        _ ->
-            vec3 0 0 0
+frequencyMatch : Analysis -> Dict Int AudioSource -> Int
+frequencyMatch { frequencies } audioSources =
+    audioSources
+        |> Dict.toList
+        |> List.filterMap
+            (\( i, { analysis } ) ->
+                analysis |> Maybe.map (.frequencies >> Tuple.pair i)
+            )
+        |> List.filter (\( i, analysis ) -> True)
+        |> List.head
+        |> Maybe.map Tuple.first
+        |> Maybe.withDefault micId
 
 
 entities colors { audioSources } =
     let
-        getColor : Int -> Vec3
-        getColor i =
-            colors |> List.drop i |> List.head |> Maybe.map colorToVec |> Maybe.withDefault (fftToColor Dict.empty)
+        getColor : Int -> Analysis -> Vec3
+        getColor id analysis =
+            let
+                i =
+                    if id == micId then
+                        frequencyMatch analysis audioSources
+
+                    else
+                        id
+            in
+            colors |> List.drop i |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
 
         fold : ( Int, AudioSource ) -> List WebGL.Entity -> List WebGL.Entity
         fold ( id, { analysis } ) list =
             case analysis of
-                Just { waveform } ->
-                    noteToEntity waveform (getColor id) :: list
+                Just a ->
+                    noteToEntity a.waveform (getColor id a) :: list
 
                 Nothing ->
                     list
