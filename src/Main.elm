@@ -93,12 +93,40 @@ update action model =
             )
 
         UpdateFfts fft ->
-            ( decodeFfts fft model
-            , if Dict.member micId model.audioSources then
-                model.audioSources |> encodeGetAnalysisCommand |> getFfts
+            let
+                modelWithUpdatedFrequencies =
+                    decodeFfts fft model
+
+                both id old new result =
+                    let
+                        inserted =
+                            Dict.insert id new result
+                    in
+                    if micId == id then
+                        inserted
+
+                    else
+                        Maybe.map2
+                            (\a b ->
+                                if a.frequencies == b.frequencies then
+                                    result
+
+                                else
+                                    inserted
+                            )
+                            old.analysis
+                            new.analysis
+                            |> Maybe.withDefault inserted
+
+                toFetchAgain =
+                    Dict.merge Dict.insert both Dict.insert model.audioSources modelWithUpdatedFrequencies.audioSources Dict.empty
+            in
+            ( modelWithUpdatedFrequencies
+            , if Dict.isEmpty toFetchAgain then
+                Cmd.none
 
               else
-                Cmd.none
+                toFetchAgain |> encodeGetAnalysisCommand |> getFfts
             )
 
         AddAudioSource note ->

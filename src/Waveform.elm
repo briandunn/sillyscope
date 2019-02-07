@@ -108,7 +108,7 @@ dominant count values =
         |> List.indexedMap Tuple.pair
         |> List.sortBy Tuple.second
         |> List.reverse
-        |> List.take 5
+        |> List.take count
         |> List.map (\( i, _ ) -> toFloat i)
         |> Debug.log "fft"
 

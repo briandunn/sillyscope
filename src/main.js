@@ -6,8 +6,10 @@ function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
   analyser.fftSize = 8192;
-
+  analyser.maxDecibles = -30;
+  analyser.minDecibles = -65;
   analyser.smoothingTimeConstant = 0;
+
   gain.gain.value = 0;
   source.connect(gain);
   // gain.connect(context.destination);
