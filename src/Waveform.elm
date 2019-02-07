@@ -110,7 +110,6 @@ dominant count values =
         |> List.reverse
         |> List.take count
         |> List.map (\( i, _ ) -> toFloat i)
-        |> Debug.log "fft"
 
 
 decodeFfts : Json.Decode.Value -> Model -> Model
