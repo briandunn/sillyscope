@@ -10,7 +10,7 @@ import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Wavef
 import Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
-import Waveform exposing (decodeFfts, decodeWaveforms)
+import Waveform exposing (decodeWaveforms)
 
 
 port releaseAudioSource : Json.Decode.Value -> Cmd msg
@@ -22,9 +22,6 @@ port notePress : Json.Decode.Value -> Cmd msg
 port getWaveforms : Json.Decode.Value -> Cmd msg
 
 
-port getFfts : Json.Decode.Value -> Cmd msg
-
-
 port activateMic : Json.Decode.Value -> Cmd msg
 
 
@@ -34,16 +31,12 @@ port addAudioSource : (Json.Encode.Value -> msg) -> Sub msg
 port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 
-port ffts : (Json.Encode.Value -> msg) -> Sub msg
-
-
 subscriptions : Model -> Sub Action
 subscriptions model =
     Sub.batch
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
         , waveforms UpdateWaveform
         , addAudioSource AddAudioSource
-        , ffts UpdateFfts
         ]
 
 
@@ -64,16 +57,6 @@ type alias FreqMessage =
     { id : Int, freq : Int }
 
 
-buildGetWaveFormsCommand { audioSources } =
-    let
-        payload =
-            encodeGetAnalysisCommand audioSources
-    in
-    [ getWaveforms, getFfts ]
-        |> List.map (\fn -> fn payload)
-        |> Cmd.batch
-
-
 update : Action -> Model -> ( Model, Cmd Action )
 update action model =
     case action of
@@ -92,43 +75,6 @@ update action model =
                 model.audioSources |> encodeGetAnalysisCommand |> getWaveforms
             )
 
-        UpdateFfts fft ->
-            let
-                modelWithUpdatedFrequencies =
-                    decodeFfts fft model
-
-                both id old new result =
-                    let
-                        inserted =
-                            Dict.insert id new result
-                    in
-                    if micId == id then
-                        inserted
-
-                    else
-                        Maybe.map2
-                            (\a b ->
-                                if a.frequencies == b.frequencies then
-                                    result
-
-                                else
-                                    inserted
-                            )
-                            old.analysis
-                            new.analysis
-                            |> Maybe.withDefault inserted
-
-                toFetchAgain =
-                    Dict.merge Dict.insert both Dict.insert model.audioSources modelWithUpdatedFrequencies.audioSources Dict.empty
-            in
-            ( modelWithUpdatedFrequencies
-            , if Dict.isEmpty toFetchAgain then
-                Cmd.none
-
-              else
-                toFetchAgain |> encodeGetAnalysisCommand |> getFfts
-            )
-
         AddAudioSource note ->
             case decodeAudioSource note of
                 Ok o ->
@@ -136,7 +82,7 @@ update action model =
                         m =
                             { model | audioSources = Dict.insert o.id o model.audioSources }
                     in
-                    ( m, buildGetWaveFormsCommand m )
+                    ( m, m.audioSources |> encodeGetAnalysisCommand |> getWaveforms )
 
                 Err _ ->
                     ( model, Cmd.none )

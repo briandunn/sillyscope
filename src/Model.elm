@@ -30,7 +30,6 @@ type Action
     | Zoom ZoomAction
     | Viewport ViewportAction
     | UpdateWaveform E.Value
-    | UpdateFfts E.Value
     | AddAudioSource D.Value
     | SetOscilatorType OscilatorType
 

@@ -72,11 +72,9 @@ const analyze = (port, fn) => nodes => {
 };
 
 const getWaveforms = analyze(app.ports.waveforms, 'getFloatTimeDomainData');
-const getFfts = analyze(app.ports.ffts, 'getFloatFrequencyData');
 
 const subscriptions = {
   activateMic,
-  getFfts,
   getWaveforms,
   notePress,
   releaseAudioSource,

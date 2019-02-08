@@ -1,4 +1,4 @@
-module Waveform exposing (decodeFfts, decodeWaveforms, dropToLocalMinimum)
+module Waveform exposing (decodeWaveforms)
 
 import Dict exposing (Dict)
 import Json.Decode
@@ -93,39 +93,6 @@ decodeWaveforms forms model =
             { model
                 | audioSources = updateAnalysis update wfs model.audioSources
             }
-
-        Err _ ->
-            model
-
-
-dominant : Int -> Waveform -> Waveform
-dominant count values =
-    let
-        valueCount =
-            values |> List.length |> toFloat
-    in
-    values
-        |> List.indexedMap Tuple.pair
-        |> List.sortBy Tuple.second
-        |> List.reverse
-        |> List.take count
-        |> List.map (\( i, _ ) -> toFloat i)
-
-
-decodeFfts : Json.Decode.Value -> Model -> Model
-decodeFfts ffts model =
-    let
-        update analysis frequencies =
-            case analysis of
-                Just a ->
-                    Just { a | frequencies = dominant 12 frequencies }
-
-                Nothing ->
-                    Just { frequencies = dominant 12 frequencies, waveform = [] }
-    in
-    case decodeDataPayload ffts of
-        Ok f ->
-            { model | audioSources = updateAnalysis update f model.audioSources }
 
         Err _ ->
             model
