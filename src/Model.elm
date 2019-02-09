@@ -35,7 +35,7 @@ type Action
 
 
 type alias Analysis =
-    { waveform : Waveform, frequencies : Waveform }
+    { waveform : Waveform, frequency : Float }
 
 
 type alias AudioSource =
@@ -48,6 +48,7 @@ type alias Model =
     , zoomStart : Maybe Point
     , wrapperElement : Maybe Element
     , oscilatorType : OscilatorType
+    , sampleRate : Float
     }
 
 
@@ -63,10 +64,11 @@ type alias WidthHeight =
     { width : Int, height : Int }
 
 
-init : () -> ( Model, Cmd Action )
-init () =
+init : Float -> ( Model, Cmd Action )
+init sampleRate =
     ( { audioSources = Dict.empty
       , zoom = 1
+      , sampleRate = sampleRate
       , zoomStart = Nothing
       , wrapperElement = Nothing
       , oscilatorType = Sine

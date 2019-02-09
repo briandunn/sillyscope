@@ -24,25 +24,17 @@ colorToVec ( r, g, b ) =
 
 
 frequencyMatch : Analysis -> Dict Int AudioSource -> Int
-frequencyMatch { frequencies } audioSources =
-    let
-        micFreqs =
-            Set.fromList frequencies
-    in
+frequencyMatch micAnalysis audioSources =
     audioSources
         |> Dict.remove micId
         |> Dict.toList
         |> List.filterMap
             (\( i, { analysis } ) ->
-                analysis |> Maybe.map (.frequencies >> Tuple.pair i)
+                analysis |> Maybe.map (.frequency >> Tuple.pair i)
             )
         |> List.filter
-            (\( i, freqs ) ->
-                freqs
-                    |> Set.fromList
-                    |> Set.intersect micFreqs
-                    |> Set.size
-                    |> (<) 5
+            (\( i, frequency ) ->
+                abs (micAnalysis.frequency - frequency) < 1
             )
         |> List.head
         |> Maybe.map Tuple.first

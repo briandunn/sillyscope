@@ -6,9 +6,6 @@ function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
   analyser.fftSize = 8192;
-  analyser.maxDecibles = -30;
-  analyser.minDecibles = -65;
-  analyser.smoothingTimeConstant = 0;
 
   gain.gain.value = 0;
   source.connect(gain);
@@ -23,8 +20,29 @@ function getArray(analyser, name) {
   return Array.from(list);
 }
 
+function releaseAudioSource({ release, node: { gain, source, analyser } }) {
+  gain.gain.linearRampToValueAtTime(0, context.currentTime + release);
+  setTimeout(() => {
+    [gain, source, analyser].forEach(node => {
+      node.disconnect();
+    });
+  }, release * 1000);
+}
+
+const analyze = (port, fn) => nodes => {
+  requestAnimationFrame(() => {
+    port.send(
+      nodes.map(({ id, node: { analyser } }) => ({
+        id,
+        data: getArray(analyser, fn),
+      }))
+    );
+  });
+};
+
 const app = Elm.Main.init({
   node: document.querySelector('main'),
+  flags: { sampleRate: context.sampleRate },
 });
 
 function notePress({ id, frequency, attack, type }) {
@@ -50,26 +68,6 @@ function activateMic({ id }) {
     app.ports.addAudioSource.send({ id, node });
   });
 }
-
-function releaseAudioSource({ release, node: { gain, source, analyser } }) {
-  gain.gain.linearRampToValueAtTime(0, context.currentTime + release);
-  setTimeout(() => {
-    [gain, source, analyser].forEach(node => {
-      node.disconnect();
-    });
-  }, release * 1000);
-}
-
-const analyze = (port, fn) => nodes => {
-  requestAnimationFrame(() => {
-    port.send(
-      nodes.map(({ id, node: { analyser } }) => ({
-        id,
-        data: getArray(analyser, fn),
-      }))
-    );
-  });
-};
 
 const getWaveforms = analyze(app.ports.waveforms, 'getFloatTimeDomainData');
 

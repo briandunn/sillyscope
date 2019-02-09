@@ -1,5 +1,6 @@
 module Waveform exposing (decodeWaveforms)
 
+import Array
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
@@ -64,6 +65,43 @@ updateAnalysis fn waveforms sources =
     waveforms |> Dict.toList |> List.foldr fold sources
 
 
+
+-- for(i=0; i < len; i++)
+--   {
+--     sum = 0;
+--     for(k=0; k < len-i; k++) sum += (rawData[k]-128)*(rawData[k+i]-128)/256;
+--   }
+-- for(i=0; i < len; i++)
+--   {
+--     sum = 0;
+--     for(k=0; k < len-i; k++) sum += rawData[k] * rawData[k+i];
+--   }
+
+
+autoCorrelate : Waveform -> Waveform
+autoCorrelate waveform =
+    let
+        sampleCount =
+            List.length waveform
+
+        samples =
+            Array.fromList waveform
+
+        get i =
+            samples |> Array.get i |> Maybe.withDefault 0
+    in
+    List.range 0 sampleCount
+        |> List.map
+            (\i ->
+                List.range 0 (sampleCount - i)
+                    |> List.foldl (\k sum -> sum + (get k * get (k + i))) 0
+            )
+
+
+detectFrequency waveform =
+    0
+
+
 decodeWaveforms : Json.Decode.Value -> Model -> Model
 decodeWaveforms forms model =
     let
@@ -81,12 +119,11 @@ decodeWaveforms forms model =
             dropToLocalMinimum >> List.take frameCount
 
         update analysis waveform =
-            case analysis of
-                Just a ->
-                    Just { a | waveform = trim waveform }
-
-                Nothing ->
-                    Just { waveform = trim waveform, frequencies = [] }
+            let
+                wf =
+                    trim waveform |> autoCorrelate
+            in
+            Just { waveform = wf, frequency = detectFrequency wf }
     in
     case decodeDataPayload forms of
         Ok wfs ->
