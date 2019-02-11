@@ -48,7 +48,7 @@ type alias Model =
     , zoomStart : Maybe Point
     , wrapperElement : Maybe Element
     , oscilatorType : OscilatorType
-    , sampleRate : Float
+    , sampleRate : Int
     }
 
 
@@ -64,7 +64,7 @@ type alias WidthHeight =
     { width : Int, height : Int }
 
 
-init : Float -> ( Model, Cmd Action )
+init : Int -> ( Model, Cmd Action )
 init sampleRate =
     ( { audioSources = Dict.empty
       , zoom = 1

@@ -46,7 +46,7 @@ noteIdToFreq n =
 
 main =
     Browser.element
-        { init = Json.Decode.decodeValue (Json.Decode.field "sampleRate" Json.Decode.float) >> Result.withDefault 0 >> init
+        { init = Json.Decode.decodeValue (Json.Decode.field "sampleRate" Json.Decode.int) >> Result.withDefault 0 >> init
         , update = update
         , view = view
         , subscriptions = subscriptions
