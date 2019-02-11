@@ -1,4 +1,4 @@
-module Waveform exposing (decodeWaveforms)
+module Waveform exposing (autoCorrelate, decodeWaveforms, detectPeaks)
 
 import Array
 import Dict exposing (Dict)
@@ -65,17 +65,20 @@ updateAnalysis fn waveforms sources =
     waveforms |> Dict.toList |> List.foldr fold sources
 
 
+detectPeaks i samples peaks =
+    case samples of
+        first :: second :: rest ->
+            detectPeaks (i + 1)
+                (second :: rest)
+                (if first < second then
+                    peaks
 
--- for(i=0; i < len; i++)
---   {
---     sum = 0;
---     for(k=0; k < len-i; k++) sum += (rawData[k]-128)*(rawData[k+i]-128)/256;
---   }
--- for(i=0; i < len; i++)
---   {
---     sum = 0;
---     for(k=0; k < len-i; k++) sum += rawData[k] * rawData[k+i];
---   }
+                 else
+                    peaks ++ [ ( i, first ) ]
+                )
+
+        _ ->
+            peaks
 
 
 autoCorrelate : Waveform -> Waveform
