@@ -65,7 +65,7 @@ updateAnalysis fn waveforms sources =
     waveforms |> Dict.toList |> List.foldr fold sources
 
 
-detectPeaks i ({ peaks, threshold, skip } as memo) samples =
+detectPeaks i ({ peaks, skip } as memo) samples =
     let
         detect first second =
             case compare first second of
@@ -83,7 +83,7 @@ detectPeaks i ({ peaks, threshold, skip } as memo) samples =
                         memo
 
                     else
-                        { memo | peaks = peaks ++ [ ( i, second ) ], skip = True }
+                        { memo | peaks = peaks ++ [ ( i, first ) ], skip = True }
     in
     case samples of
         first :: second :: rest ->
@@ -136,12 +136,13 @@ detectFrequency sampleRate waveform =
             waveform
                 |> autoCorrelate
                 |> normalize
-                |> detectPeaks 0 { peaks = [], threshold = 0.5, skip = False }
+                |> detectPeaks 0 { peaks = [], skip = False }
+                |> List.filter (Tuple.second >> (>) 0.5)
                 |> List.map Tuple.first
                 |> List.take 2
                 |> List.foldl (-) 0
     in
-    toFloat sampleRate / firstPeakIndexDelta
+    toFloat sampleRate / firstPeakIndexDelta |> Debug.log "freq"
 
 
 decodeWaveforms : Json.Decode.Value -> Model -> Model
