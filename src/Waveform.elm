@@ -79,23 +79,19 @@ updateAnalysis fn waveforms sources =
 
 
 autoCorrelate : Waveform -> Waveform
-autoCorrelate waveform =
+autoCorrelate samples =
     let
-        sampleCount =
-            List.length waveform
+        correlate shiftedSamples =
+            List.foldl (+) 0 (List.map2 (*) samples shiftedSamples)
+                :: (case shiftedSamples of
+                        [] ->
+                            []
 
-        samples =
-            Array.fromList waveform
-
-        get i =
-            samples |> Array.get i |> Maybe.withDefault 0
+                        first :: rest ->
+                            correlate rest
+                   )
     in
-    List.range 0 sampleCount
-        |> List.map
-            (\i ->
-                List.range 0 (sampleCount - i)
-                    |> List.foldl (\k sum -> sum + (get k * get (k + i))) 0
-            )
+    correlate samples
 
 
 detectFrequency waveform =
