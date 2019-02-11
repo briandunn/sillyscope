@@ -5,7 +5,7 @@ const context = new AudioContext();
 function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  analyser.fftSize = 8192;
+  // analyser.fftSize = 4096;
 
   gain.gain.value = 0;
   source.connect(gain);

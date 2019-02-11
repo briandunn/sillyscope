@@ -65,20 +65,52 @@ updateAnalysis fn waveforms sources =
     waveforms |> Dict.toList |> List.foldr fold sources
 
 
-detectPeaks i samples peaks =
+detectPeaks i ({ peaks, threshold, skip } as memo) samples =
+    let
+        detect first second =
+            case compare first second of
+                LT ->
+                    -- positive slope
+                    { memo | skip = False }
+
+                EQ ->
+                    -- no slope
+                    { memo | skip = False }
+
+                GT ->
+                    -- negative slope
+                    if skip then
+                        memo
+
+                    else
+                        { memo | peaks = peaks ++ [ ( i, second ) ], skip = True }
+    in
     case samples of
         first :: second :: rest ->
             detectPeaks (i + 1)
+                (detect first second)
                 (second :: rest)
-                (if first < second then
-                    peaks
-
-                 else
-                    peaks ++ [ ( i, first ) ]
-                )
 
         _ ->
             peaks
+
+
+normalize signal =
+    let
+        fold sample m =
+            if abs sample > m then
+                abs sample
+
+            else
+                m
+
+        max =
+            List.foldl fold 0 signal
+
+        normalizeSample sample =
+            sample / max
+    in
+    List.map normalizeSample signal
 
 
 autoCorrelate : Waveform -> Waveform
@@ -90,15 +122,26 @@ autoCorrelate samples =
                         [] ->
                             []
 
-                        first :: rest ->
+                        _ :: rest ->
                             correlate rest
                    )
     in
     correlate samples
 
 
-detectFrequency waveform =
-    0
+detectFrequency : Int -> Waveform -> Float
+detectFrequency sampleRate waveform =
+    let
+        firstPeakIndexDelta =
+            waveform
+                |> autoCorrelate
+                |> normalize
+                |> detectPeaks 0 { peaks = [], threshold = 0.5, skip = False }
+                |> List.map Tuple.first
+                |> List.take 2
+                |> List.foldl (-) 0
+    in
+    toFloat sampleRate / firstPeakIndexDelta
 
 
 decodeWaveforms : Json.Decode.Value -> Model -> Model
@@ -120,9 +163,9 @@ decodeWaveforms forms model =
         update analysis waveform =
             let
                 wf =
-                    trim waveform |> autoCorrelate
+                    trim waveform
             in
-            Just { waveform = wf, frequency = detectFrequency wf }
+            Just { waveform = wf, frequency = detectFrequency model.sampleRate waveform }
     in
     case decodeDataPayload forms of
         Ok wfs ->
