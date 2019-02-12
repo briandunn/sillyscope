@@ -65,34 +65,31 @@ updateAnalysis fn waveforms sources =
     waveforms |> Dict.toList |> List.foldr fold sources
 
 
-detectPeaks i ({ peaks, skip } as memo) samples =
+detectPeaks samples =
     let
-        detect first second =
-            case compare first second of
-                LT ->
-                    -- positive slope
-                    { memo | skip = False }
+        detectPeaks_ i ({ peaks, skip, threshold } as memo) samples_ =
+            let
+                detect first second =
+                    if (second - first) >= 0 then
+                        -- positive slope or flat
+                        { memo | skip = False }
 
-                EQ ->
-                    -- no slope
-                    { memo | skip = False }
-
-                GT ->
-                    -- negative slope
-                    if skip then
+                    else if skip || first < threshold then
                         memo
 
                     else
-                        { memo | peaks = peaks ++ [ ( i, first ) ], skip = True }
-    in
-    case samples of
-        first :: second :: rest ->
-            detectPeaks (i + 1)
-                (detect first second)
-                (second :: rest)
+                        { memo | peaks = peaks ++ [ ( i, first ) ], skip = True, threshold = 0.5 * first }
+            in
+            case samples_ of
+                first :: second :: rest ->
+                    detectPeaks_ (i + 1)
+                        (detect first second)
+                        (second :: rest)
 
-        _ ->
-            peaks
+                _ ->
+                    peaks
+    in
+    detectPeaks_ 0 { peaks = [], skip = False, threshold = 0 } samples
 
 
 normalize signal =
@@ -132,12 +129,11 @@ autoCorrelate samples =
 detectFrequency : Int -> Waveform -> Float
 detectFrequency sampleRate waveform =
     let
+
         firstPeakIndexDelta =
             waveform
                 |> autoCorrelate
-                |> normalize
-                |> detectPeaks 0 { peaks = [], skip = False }
-                |> List.filter (Tuple.second >> (>) 0.5)
+                |> detectPeaks
                 |> List.map Tuple.first
                 |> List.take 2
                 |> List.foldl (-) 0

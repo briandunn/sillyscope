@@ -5,7 +5,7 @@ const context = new AudioContext();
 function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  // analyser.fftSize = 4096;
+  analyser.fftSize = 4096;
 
   gain.gain.value = 0;
   source.connect(gain);
@@ -47,6 +47,7 @@ const app = Elm.Main.init({
 
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
+  console.log({ frequency });
   osc.frequency.value = frequency;
   const { gain, analyser, ...node } = buildNode(osc);
 
