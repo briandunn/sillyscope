@@ -41,7 +41,7 @@ subscriptions model =
 
 
 noteIdToFreq n =
-    (n + 3) |> interval |> (*) 55
+    (n + 3) |> interval |> (*) 220
 
 
 main =

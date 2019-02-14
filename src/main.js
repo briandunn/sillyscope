@@ -5,7 +5,6 @@ const context = new AudioContext();
 function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
-  analyser.fftSize = 4096;
 
   gain.gain.value = 0;
   source.connect(gain);
@@ -15,7 +14,12 @@ function buildNode(source) {
 }
 
 function getArray(analyser, name) {
-  const list = new Float32Array(analyser.frequencyBinCount);
+  const length = {
+    getFloatTimeDomainData: analyser.fftSize,
+    getFloatFrequencyDomainData: analyser.frequencyBinCount,
+  };
+
+  const list = new Float32Array(length[name]);
   analyser[name](list);
   return Array.from(list);
 }
