@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, decodeWaveforms, averageDistance, detectPeaks)
+module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectPeaks)
 
 import Array
 import Dict exposing (Dict)

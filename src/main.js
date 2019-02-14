@@ -1,6 +1,7 @@
 import { Elm } from './Main.elm';
 
 const context = new AudioContext();
+const worker = new Worker('./worker.js');
 
 function buildNode(source) {
   const gain = context.createGain();
@@ -34,14 +35,15 @@ function releaseAudioSource({ release, node: { gain, source, analyser } }) {
 }
 
 const analyze = (port, fn) => nodes => {
-  requestAnimationFrame(() => {
-    port.send(
-      nodes.map(({ id, node: { analyser } }) => ({
-        id,
-        data: getArray(analyser, fn),
-      }))
-    );
-  });
+  const message = {
+    port,
+    type: fn,
+    analyses: nodes.map(({ id, node: { analyser } }) => ({
+      id,
+      data: getArray(analyser, fn),
+    })),
+  };
+  worker.postMessage(message);
 };
 
 const app = Elm.Main.init({
@@ -74,7 +76,13 @@ function activateMic({ id }) {
   });
 }
 
-const getWaveforms = analyze(app.ports.waveforms, 'getFloatTimeDomainData');
+const getWaveforms = analyze('waveforms', 'getFloatTimeDomainData');
+
+worker.onmessage = ({ port, message }) => {
+  requestAnimationFrame(() => {
+    app.ports[port].send(message);
+  });
+};
 
 const subscriptions = {
   activateMic,

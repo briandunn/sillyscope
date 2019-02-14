@@ -32,7 +32,7 @@ port waveforms : (Json.Encode.Value -> msg) -> Sub msg
 
 
 subscriptions : Model -> Sub Action
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
         , waveforms UpdateWaveform
@@ -41,7 +41,7 @@ subscriptions model =
 
 
 noteIdToFreq n =
-    (n + 3) |> interval |> (*) 220
+    (n + 3) |> interval |> (*) 440
 
 
 main =
