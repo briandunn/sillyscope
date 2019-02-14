@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, decodeWaveforms, detectPeaks)
+module Waveform exposing (autoCorrelate, decodeWaveforms, averageDistance, detectPeaks)
 
 import Array
 import Dict exposing (Dict)
@@ -110,6 +110,23 @@ normalize signal =
     List.map normalizeSample signal
 
 
+averageDistance : List Int -> Float
+averageDistance peakIndexes =
+    let
+        spacing list =
+            case list of
+                first :: second :: rest ->
+                    second - first :: spacing (second :: rest)
+
+                _ ->
+                    []
+
+        distances =
+            spacing peakIndexes
+    in
+    (distances |> List.sum |> toFloat) / (distances |> List.length |> toFloat)
+
+
 autoCorrelate : Waveform -> Waveform
 autoCorrelate samples =
     let
@@ -129,16 +146,14 @@ autoCorrelate samples =
 detectFrequency : Int -> Waveform -> Float
 detectFrequency sampleRate waveform =
     let
-
-        firstPeakIndexDelta =
+        samplesPerRepetition =
             waveform
                 |> autoCorrelate
                 |> detectPeaks
                 |> List.map Tuple.first
-                |> List.take 2
-                |> List.foldl (-) 0
+                |> averageDistance
     in
-    toFloat sampleRate / firstPeakIndexDelta |> Debug.log "freq"
+    toFloat sampleRate / samplesPerRepetition |> Debug.log "freq"
 
 
 decodeWaveforms : Json.Decode.Value -> Model -> Model
