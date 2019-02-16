@@ -1,16 +1,16 @@
 module View exposing (view)
 
 import Array exposing (toList)
-import Dict
+import Dict exposing (Dict)
 import GL
-import Html exposing (div)
+import Html exposing (Attribute, Html, div)
 import Html.Attributes exposing (id, style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), Model, Point, Waveform, ZoomAction(..), micId)
+import Model exposing (Action(..), AudioSource, Model, Point, Waveform, ZoomAction(..), freqToNoteId, micId)
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
-import Set
+import Set exposing (Set)
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, height, stroke, viewBox, width)
 import WebGL
@@ -35,8 +35,31 @@ toCSSColor ( r, g, b ) =
     "rgb(" ++ ([ r, g, b ] |> List.map String.fromFloat |> String.join ",") ++ ")"
 
 
-keyboard notes =
+tunerNeedle freq =
     let
+        toPercent f =
+            String.fromFloat ((((12 - f) / 12) - (1 / 24)) * 100) ++ "%"
+
+        needleTop =
+            freq |> freqToNoteId |> toPercent
+    in
+    div
+        [ style "position" "absolute"
+        , style "width" "100%"
+        , style "height" "1%"
+        , style "top" needleTop
+        , style "background-color" "black"
+        , style "transition" "top 0.3s"
+        ]
+        []
+
+
+keyboard : Dict Int AudioSource -> Html Action
+keyboard sources =
+    let
+        notes =
+            sources |> Dict.keys |> Set.fromList
+
         isSharp i =
             [ 1, 3, 6, 8, 10 ] |> Set.fromList |> Set.member i
     in
@@ -44,27 +67,37 @@ keyboard notes =
         [ style "flex" "1"
         , style "display" "flex"
         , style "flex-direction" "column"
+        , style "position" "relative"
         ]
-        (colors
-            |> List.indexedMap
-                (\i color ->
-                    div
-                        [ color |> toCSSColor |> style "background-color"
-                        , style "flex" "1"
-                        , style "margin" "2px"
-                        , style "width"
-                            (if isSharp i then
-                                "50%"
+        ((sources
+            |> Dict.values
+            |> List.filterMap .analysis
+            |> List.map .frequency
+            |> List.head
+            |> Maybe.withDefault 0
+            |> tunerNeedle
+         )
+            :: (colors
+                    |> List.indexedMap
+                        (\i color ->
+                            div
+                                [ color |> toCSSColor |> style "background-color"
+                                , style "flex" "1"
+                                , style "margin" "2px"
+                                , style "width"
+                                    (if isSharp i then
+                                        "50%"
 
-                             else
-                                "auto"
-                            )
-                        , selectedAttribute (Set.member i notes)
-                        , onClick (ToggleKey i)
-                        ]
-                        []
-                )
-            |> List.reverse
+                                     else
+                                        "auto"
+                                    )
+                                , selectedAttribute (Set.member i notes)
+                                , onClick (ToggleKey i)
+                                ]
+                                []
+                        )
+                    |> List.reverse
+               )
         )
 
 
@@ -96,6 +129,7 @@ purple =
     "rgb(105, 55, 216)"
 
 
+buttonSvg : Bool -> List (Attribute Action) -> List (Html Action) -> Html Action
 buttonSvg selected attrs children =
     svg
         ([ style "background-color" "#fcbeed"
@@ -115,9 +149,6 @@ buttonSvg selected attrs children =
 view : Model -> Html.Html Action
 view model =
     let
-        noteIds =
-            model.audioSources |> Dict.keys |> Set.fromList
-
         dims =
             case model.wrapperElement of
                 Nothing ->
@@ -134,7 +165,7 @@ view model =
         , style "height" (String.fromFloat dims.sceneHeight ++ "px")
         , style "padding" "20px"
         ]
-        [ keyboard noteIds
+        [ keyboard model.audioSources
         , div
             ([ style "flex" "4", style "cursor" "ew-resize", id "scope-wrapper", style "height" "100%" ]
                 ++ zoomEvents

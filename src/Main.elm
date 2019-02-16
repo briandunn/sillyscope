@@ -6,7 +6,7 @@ import Browser.Events
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
-import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
+import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId, noteIdToFreq)
 import Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
@@ -38,10 +38,6 @@ subscriptions model =
         , waveforms UpdateWaveform
         , addAudioSource AddAudioSource
         ]
-
-
-noteIdToFreq n =
-    (n + 3) |> interval |> (*) 220
 
 
 main =
@@ -142,8 +138,3 @@ toggleAudioSource id model =
                 , encodeReleaseCommand audioSource |> releaseAudioSource
                 )
             )
-
-
-interval : Int -> Float
-interval n =
-    2 ^ (toFloat n / 12.0)

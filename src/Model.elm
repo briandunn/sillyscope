@@ -1,4 +1,4 @@
-module Model exposing (Action(..), Analysis, AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId)
+module Model exposing (Action(..), Analysis, AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), freq, freqToNoteId, init, micId, note, noteIdToFreq)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
@@ -54,6 +54,27 @@ type alias Model =
 
 micId =
     777
+
+
+noteIdToFreq : Int -> Float
+noteIdToFreq =
+    toFloat >> (+) 40 >> freq
+
+
+freqToNoteId f =
+    let
+        n =
+            note f - 4
+    in
+    n - toFloat (12 * floor (n / 12))
+
+
+freq n =
+    440 * (2 ^ (1 / 12)) ^ (n - 49)
+
+
+note f =
+    logBase (2 ^ (1 / 12)) (f / 440) + 49
 
 
 type alias Point =
