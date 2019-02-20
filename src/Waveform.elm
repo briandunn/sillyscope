@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, decodeWaveforms, averageDistance, detectPeaks)
+module Waveform exposing (autoCorrelate, averageDistance, decodeWaveforms, detectFrequency, detectPeaks)
 
 import Array
 import Dict exposing (Dict)
@@ -153,7 +153,7 @@ detectFrequency sampleRate waveform =
                 |> List.map Tuple.first
                 |> averageDistance
     in
-    toFloat sampleRate / samplesPerRepetition |> Debug.log "freq"
+    toFloat sampleRate / samplesPerRepetition
 
 
 decodeWaveforms : Json.Decode.Value -> Model -> Model
@@ -176,8 +176,11 @@ decodeWaveforms forms model =
             let
                 wf =
                     trim waveform
+
+                frequency =
+                    detectFrequency model.sampleRate waveform
             in
-            Just { waveform = wf, frequency = detectFrequency model.sampleRate waveform }
+            Just { waveform = wf, frequency = frequency }
     in
     case decodeDataPayload forms of
         Ok wfs ->
