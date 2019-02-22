@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, averageDistance, decodeWaveforms, detectFrequency, detectPeaks)
+module Waveform exposing (autoCorrelate, autoCorrelateX, averageDistance, decodeWaveforms, detectFrequency, detectPeaks)
 
 import Array
 import Dict exposing (Dict)
@@ -130,17 +130,38 @@ averageDistance peakIndexes =
 autoCorrelate : Waveform -> Waveform
 autoCorrelate samples =
     let
-        correlate shiftedSamples =
-            List.foldl (+) 0 (List.map2 (*) samples shiftedSamples)
-                :: (case shiftedSamples of
-                        [] ->
-                            []
+        correlate acc shiftedSamples =
+            case shiftedSamples of
+                [] ->
+                    acc |> List.reverse
 
-                        _ :: rest ->
-                            correlate rest
-                   )
+                _ :: rest ->
+                    correlate
+                        (List.foldl (+) 0 (List.map2 (*) samples shiftedSamples)
+                            :: acc
+                        )
+                        rest
     in
-    correlate samples
+    correlate [] samples
+
+
+tailCallACX acc samples shiftedSamples =
+    case shiftedSamples of
+        [] ->
+            acc |> List.reverse
+
+        _ :: rest ->
+            tailCallACX
+                (List.foldl (+) 0 (List.map2 (*) samples shiftedSamples)
+                    :: acc
+                )
+                samples
+                rest
+
+
+autoCorrelateX : Waveform -> Waveform
+autoCorrelateX samples =
+    tailCallACX [] samples samples
 
 
 detectFrequency : Int -> Waveform -> Float
