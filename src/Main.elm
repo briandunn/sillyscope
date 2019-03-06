@@ -22,6 +22,9 @@ port notePress : Json.Decode.Value -> Cmd msg
 port getWaveforms : Json.Decode.Value -> Cmd msg
 
 
+port calculateFrequencies : Json.Decode.Value -> Cmd msg
+
+
 port activateMic : Json.Decode.Value -> Cmd msg
 
 
@@ -29,6 +32,9 @@ port addAudioSource : (Json.Encode.Value -> msg) -> Sub msg
 
 
 port waveforms : (Json.Encode.Value -> msg) -> Sub msg
+
+
+port frequencies : (Json.Encode.Value -> msg) -> Sub msg
 
 
 subscriptions : Model -> Sub Action
@@ -51,10 +57,6 @@ main =
         , view = view
         , subscriptions = subscriptions
         }
-
-
-type alias FreqMessage =
-    { id : Int, freq : Int }
 
 
 update : Action -> Model -> ( Model, Cmd Action )

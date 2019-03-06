@@ -24,7 +24,10 @@ type Action
 
 encodeWaveforms : Result Json.Decode.Error (Dict Int Waveform) -> Json.Encode.Value
 encodeWaveforms waveforms =
-    Json.Encode.object [ ( "port", Json.Encode.string "waveforms" ), ( "message", Json.Encode.null ) ]
+    waveforms
+        |> Result.withDefault Dict.empty
+        |> Dict.toList
+        |> Json.Encode.list (\( k, v ) -> Json.Encode.object [ ( "id", Json.Encode.int k ), ( "data", Json.Encode.list Json.Encode.float v ) ])
 
 
 init : () -> ( Model, Cmd a )
@@ -35,10 +38,6 @@ init _ =
 update message _ =
     case message of
         Data payload ->
-            let
-                _ =
-                    Debug.log "payload" payload
-            in
             ( Model, payload |> Waveform.decodeDataPayload |> encodeWaveforms |> results )
 
 
