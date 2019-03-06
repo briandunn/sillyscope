@@ -34,14 +34,14 @@ function releaseAudioSource({ release, node: { gain, source, analyser } }) {
 }
 
 const analyze = (port, fn) => nodes => {
-  requestAnimationFrame(() => {
-    port.send(
-      nodes.map(({ id, node: { analyser } }) => ({
-        id,
-        data: getArray(analyser, fn),
-      }))
-    );
-  });
+  const message = {
+    port,
+    type: fn,
+    analyses: nodes.map(({ id, node: { analyser } }) => ({
+      id,
+      data: getArray(analyser, fn),
+    })),
+  };
 };
 
 const app = Elm.Main.init({
@@ -74,15 +74,30 @@ function activateMic({ id }) {
   });
 }
 
-const getWaveforms = analyze(app.ports.waveforms, 'getFloatTimeDomainData');
+const getWaveforms = analyze('waveforms', 'getFloatTimeDomainData');
+
+const worker = new Worker('./worker.js');
+function calculateFrequencies(waveforms) {
+  waveforms.forEach(waveform => {
+    worker.onmessage = ({ data }) => {
+      app.ports.frequencies.send(data);
+    };
+    worker.postMessage(waveform);
+  });
+}
 
 const subscriptions = {
   activateMic,
   getWaveforms,
   notePress,
   releaseAudioSource,
+  calculateFrequencies,
 };
 
 for (const portName in subscriptions) {
   app.ports[portName].subscribe(subscriptions[portName]);
 }
+
+const payload = [
+  { id: 5, data: [...Array(2048)].map(() => Math.random() * 2 - 1) },
+];
