@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, autoCorrelateX, averageDistance, decodeWaveforms, detectFrequency, detectPeaks)
+module Waveform exposing (autoCorrelate, averageDistance, decodeWaveforms, detectFrequency, detectPeaks)
 
 import Array
 import Dict exposing (Dict)
@@ -143,25 +143,6 @@ autoCorrelate samples =
                         rest
     in
     correlate [] samples
-
-
-tailCallACX acc samples shiftedSamples =
-    case shiftedSamples of
-        [] ->
-            acc |> List.reverse
-
-        _ :: rest ->
-            tailCallACX
-                (List.foldl (+) 0 (List.map2 (*) samples shiftedSamples)
-                    :: acc
-                )
-                samples
-                rest
-
-
-autoCorrelateX : Waveform -> Waveform
-autoCorrelateX samples =
-    tailCallACX [] samples samples
 
 
 detectFrequency : Int -> Waveform -> Float
