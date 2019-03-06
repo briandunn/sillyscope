@@ -55,6 +55,10 @@ main =
         }
 
 
+encodeCalculateFrequenciesCommand id waveform =
+    Json.Encode.null
+
+
 update : Action -> Model -> ( Model, Cmd Action )
 update action model =
     case action of
@@ -65,12 +69,23 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         UpdateWaveform forms ->
-            ( decodeWaveforms forms model
-            , if Dict.isEmpty model.audioSources then
+            let
+                updatedModel =
+                    decodeWaveforms forms model
+            in
+            ( updatedModel
+            , if Dict.isEmpty updatedModel.audioSources then
                 Cmd.none
 
               else
-                model.audioSources |> encodeGetAnalysisCommand |> getWaveforms
+                Cmd.batch
+                    ((model.audioSources |> encodeGetAnalysisCommand |> getWaveforms)
+                        :: (updatedModel.audioSources
+                                |> Dict.get micId
+                                |> Maybe.map (encodeCalculateFrequenciesCommand micId >> calculateFrequencies >> List.singleton)
+                                |> Maybe.withDefault []
+                           )
+                    )
             )
 
         AddAudioSource note ->

@@ -22,12 +22,16 @@ type Action
     = Data Json.Encode.Value
 
 
-encodeWaveforms : Result Json.Decode.Error (Dict Int Waveform) -> Json.Encode.Value
-encodeWaveforms waveforms =
+encodeFrequencies : Dict Int Float -> Json.Encode.Value
+encodeFrequencies waveforms =
     waveforms
-        |> Result.withDefault Dict.empty
         |> Dict.toList
-        |> Json.Encode.list (\( k, v ) -> Json.Encode.object [ ( "id", Json.Encode.int k ), ( "data", Json.Encode.list Json.Encode.float v ) ])
+        |> Json.Encode.list (\( k, v ) -> Json.Encode.object [ ( "id", Json.Encode.int k ), ( "data", Json.Encode.float v ) ])
+
+
+detectFrequencies : Dict Int Waveform -> Dict Int Float
+detectFrequencies dict =
+    Dict.map (\_ waveform -> Waveform.samplesPerRepetition waveform) dict
 
 
 init : () -> ( Model, Cmd a )
@@ -38,7 +42,7 @@ init _ =
 update message _ =
     case message of
         Data payload ->
-            ( Model, payload |> Waveform.decodeDataPayload |> encodeWaveforms |> results )
+            ( Model, payload |> Waveform.decodeDataPayload |> Result.withDefault Dict.empty |> detectFrequencies |> encodeFrequencies |> results )
 
 
 subscriptions _ =
