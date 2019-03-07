@@ -79,7 +79,6 @@ const worker = new Worker('./worker.js');
 
 worker.onmessage = ({ data }) => {
   requestAnimationFrame(() => {
-    console.log(data);
     app.ports.frequencies.send(data);
   });
 };

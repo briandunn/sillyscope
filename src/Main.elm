@@ -56,19 +56,30 @@ main =
         }
 
 
-encodeCalculateFrequenciesCommand id waveform =
-    Json.Encode.list
-        (\( i, w ) ->
-            Json.Encode.object
-                [ ( "id", Json.Encode.int i )
-                , ( "data", Json.Encode.list Json.Encode.float w )
-                ]
-        )
-        [ ( id, waveform ) ]
+encodeCalculateFrequenciesCommand sources =
+    sources
+        |> Dict.toList
+        |> List.filterMap (Tuple.second >> (\source -> Maybe.map2 Tuple.pair (Just source.id) source.waveform))
+        |> Json.Encode.list
+            (\( i, w ) ->
+                Json.Encode.object
+                    [ ( "id", Json.Encode.int i )
+                    , ( "data", Json.Encode.list Json.Encode.float w )
+                    ]
+            )
 
 
 type alias Frequencies =
     { id : Int, data : Float }
+
+
+noneIfEmpty : (Dict a b -> Cmd c) -> Dict a b -> Cmd c
+noneIfEmpty prt dict =
+    if Dict.isEmpty dict then
+        Cmd.none
+
+    else
+        prt dict
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -82,26 +93,20 @@ update action model =
 
         UpdateWaveform forms ->
             ( decodeWaveforms forms model
-            , if Dict.isEmpty model.audioSources then
-                Cmd.none
+            , Cmd.batch
+                [ model.audioSources |> noneIfEmpty (encodeGetAnalysisCommand >> getWaveforms)
+                , model.audioSources
+                    |> Dict.filter
+                        (\id { frequency } ->
+                            case frequency of
+                                Nothing ->
+                                    True
 
-              else
-                Cmd.batch
-                    ((model.audioSources |> encodeGetAnalysisCommand |> getWaveforms)
-                        :: (model.audioSources
-                                |> Dict.get micId
-                                |> Maybe.map
-                                    (.waveform
-                                        >> Maybe.map
-                                            (encodeCalculateFrequenciesCommand micId
-                                                >> calculateFrequencies
-                                                >> List.singleton
-                                            )
-                                        >> Maybe.withDefault []
-                                    )
-                                |> Maybe.withDefault []
-                           )
-                    )
+                                _ ->
+                                    False
+                        )
+                    |> noneIfEmpty (encodeCalculateFrequenciesCommand >> calculateFrequencies)
+                ]
             )
 
         UpdateFrequency payload ->
@@ -124,8 +129,16 @@ update action model =
                                 )
                             )
                         |> Result.map (List.foldl fold Dict.empty)
+                        |> Result.withDefault Dict.empty
+                        |> Debug.log "freqs"
+
+                u s d =
+                    { s | frequency = Just d }
             in
-            ( model, Cmd.none )
+            ( { model | audioSources = Waveform.updateAudioSources u decodedFrequencies model.audioSources }
+            , model.audioSources
+                |> noneIfEmpty (encodeCalculateFrequenciesCommand >> calculateFrequencies)
+            )
 
         AddAudioSource note ->
             case decodeAudioSource note of

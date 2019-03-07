@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectFrequency, detectPeaks, samplesPerRepetition)
+module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectFrequency, detectPeaks, samplesPerRepetition, updateAudioSources)
 
 import Array
 import Dict exposing (Dict)
