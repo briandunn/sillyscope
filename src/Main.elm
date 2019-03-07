@@ -106,6 +106,13 @@ update action model =
 
         UpdateFrequency payload ->
             let
+                fold { id, data } dict =
+                    if isNaN data then
+                        dict
+
+                    else
+                        Dict.insert id (toFloat model.sampleRate / data) dict
+
                 decodedFrequencies =
                     payload
                         |> Json.Decode.decodeValue
@@ -116,6 +123,7 @@ update action model =
                                     (Json.Decode.field "data" Json.Decode.float)
                                 )
                             )
+                        |> Result.map (List.foldl fold Dict.empty)
             in
             ( model, Cmd.none )
 

@@ -43,12 +43,12 @@ frequencyMatch micFreq audioSources =
 
 entities colors { audioSources } =
     let
-        getColor : Int -> Float -> Vec3
-        getColor id analysis =
+        getColor : Int -> Maybe Float -> Vec3
+        getColor id freq =
             let
                 i =
                     if id == micId then
-                        frequencyMatch analysis audioSources
+                        frequencyMatch (freq |> Maybe.withDefault 0) audioSources
 
                     else
                         id
@@ -57,7 +57,7 @@ entities colors { audioSources } =
 
         fold : ( Int, AudioSource ) -> List WebGL.Entity -> List WebGL.Entity
         fold ( id, { frequency, waveform } ) list =
-            Maybe.map2 (\f w -> noteToEntity w (getColor id f) :: list) frequency waveform |> Maybe.withDefault list
+            Maybe.map (\w -> noteToEntity w (getColor id frequency) :: list) waveform |> Maybe.withDefault list
     in
     audioSources
         |> Dict.toList
