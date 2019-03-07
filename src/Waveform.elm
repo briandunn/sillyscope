@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectFrequency, detectPeaks, dropToLocalMinimum, samplesPerRepetition, updateAudioSources)
+module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, detectFrequency, detectPeaks, dropToLocalMinimum, samplesPerRepetition)
 
 import Array
 import Dict exposing (Dict)
@@ -31,29 +31,21 @@ dropToLocalMinimum values =
         |> dropWhileFirstTwo (\a b -> a > 0 && b > 0)
 
 
-decodeDataPayload : Json.Decode.Value -> Result Json.Decode.Error (Dict Int Waveform)
-decodeDataPayload payload =
+decodeToDict : Json.Decode.Decoder a -> Json.Decode.Value -> Result Json.Decode.Error (Dict Int a)
+decodeToDict dataDecoder payload =
     let
         decoder =
             Json.Decode.map2
                 Tuple.pair
                 (Json.Decode.field "id" Json.Decode.int)
-                (Json.Decode.field "data" (Json.Decode.list Json.Decode.float))
+                (Json.Decode.field "data" dataDecoder)
                 |> Json.Decode.list
     in
     Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
 
 
-updateAudioSources : (AudioSource -> b -> AudioSource) -> Dict Int b -> Dict Int AudioSource -> Dict Int AudioSource
-updateAudioSources fn data sources =
-    let
-        skip _ _ r =
-            r
-
-        both id s d r =
-            Dict.insert id (fn d s) r
-    in
-    Dict.merge skip both skip data sources sources
+decodeDataPayload =
+    decodeToDict (Json.Decode.list Json.Decode.float)
 
 
 detectPeaks samples =
@@ -144,19 +136,3 @@ samplesPerRepetition =
 detectFrequency : Int -> Waveform -> Float
 detectFrequency sampleRate waveform =
     toFloat sampleRate / samplesPerRepetition waveform
-
-
-decodeWaveforms : Json.Decode.Value -> Model -> Model
-decodeWaveforms forms model =
-    let
-        update source waveform =
-            { source | waveform = Just waveform }
-    in
-    case decodeDataPayload forms of
-        Ok wfs ->
-            { model
-                | audioSources = updateAudioSources update wfs model.audioSources
-            }
-
-        Err _ ->
-            model

@@ -7,10 +7,10 @@ import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
 import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId, noteIdToFreq)
-import Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
+import Ports exposing (decodeAudioSource, decodeToDict, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
-import Waveform exposing (decodeWaveforms)
+import Waveform
 
 
 port activateMic : Json.Decode.Value -> Cmd msg
@@ -88,12 +88,25 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         UpdateWaveform forms ->
-            ( decodeWaveforms forms model
+            let
+                up a w =
+                    { a | waveform = Just w, frequency = Just 0 }
+
+                updatedAudioSources =
+                    forms
+                        |> decodeToDict (Json.Decode.list Json.Decode.float)
+                        |> Result.withDefault Dict.empty
+                        |> Model.updateAudioSources up model.audioSources
+
+                updatedModel =
+                    { model | audioSources = updatedAudioSources }
+            in
+            ( updatedModel
             , Cmd.batch
                 [ model.audioSources |> noneIfEmpty (encodeGetAnalysisCommand >> getWaveforms)
                 , model.audioSources
                     |> Dict.filter
-                        (\id { frequency } ->
+                        (\_ { frequency } ->
                             case frequency of
                                 -- use a trinary so we dont keep asking while it's being calculated?
                                 -- have to update the model when we do request the freq.
@@ -109,31 +122,22 @@ update action model =
 
         UpdateFrequency payload ->
             let
-                fold ( id, data ) dict =
-                    if isNaN data then
-                        dict
-
-                    else
-                        Dict.insert id (toFloat model.sampleRate / data) dict
-
                 decodedFrequencies =
                     payload
-                        |> Json.Decode.decodeValue
-                            (Json.Decode.list
-                                (Json.Decode.map2
-                                    Tuple.pair
-                                    (Json.Decode.field "id" Json.Decode.int)
-                                    (Json.Decode.field "data" Json.Decode.float)
-                                )
-                            )
-                        |> Result.map (List.foldl fold Dict.empty)
+                        |> decodeToDict Json.Decode.float
                         |> Result.withDefault Dict.empty
-                        |> Debug.log "freqs"
 
                 u s d =
-                    { s | frequency = Just d }
+                    { s
+                        | frequency =
+                            if isNaN d then
+                                Nothing
+
+                            else
+                                Just (toFloat model.sampleRate / d) |> Debug.log "freq"
+                    }
             in
-            ( { model | audioSources = Waveform.updateAudioSources u decodedFrequencies model.audioSources }
+            ( { model | audioSources = Model.updateAudioSources u model.audioSources decodedFrequencies }
             , model.audioSources
                 |> noneIfEmpty (encodeCalculateFrequenciesCommand >> calculateFrequencies)
             )

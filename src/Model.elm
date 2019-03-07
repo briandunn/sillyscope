@@ -1,4 +1,4 @@
-module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), freq, freqToNoteId, init, micId, note, noteIdToFreq)
+module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), freq, freqToNoteId, init, micId, note, noteIdToFreq, updateAudioSources)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
@@ -93,3 +93,15 @@ init sampleRate =
       }
     , perform (\viewport -> viewport |> ViewportSet |> Viewport) Browser.Dom.getViewport
     )
+
+
+updateAudioSources : (AudioSource -> b -> AudioSource) -> Dict Int AudioSource -> Dict Int b -> Dict Int AudioSource
+updateAudioSources fn sources data =
+    let
+        skip _ _ r =
+            r
+
+        both id s d r =
+            Dict.insert id (fn d s) r
+    in
+    Dict.merge skip both skip data sources sources

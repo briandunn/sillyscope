@@ -1,10 +1,23 @@
-module Ports exposing (decodeAudioSource, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
+module Ports exposing (decodeAudioSource, decodeToDict, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
 import Model exposing (AudioSource)
 import OscilatorType exposing (OscilatorType)
+
+
+decodeToDict : Json.Decode.Decoder a -> Json.Decode.Value -> Result Json.Decode.Error (Dict Int a)
+decodeToDict dataDecoder payload =
+    let
+        decoder =
+            Json.Decode.map2
+                Tuple.pair
+                (Json.Decode.field "id" Json.Decode.int)
+                (Json.Decode.field "data" dataDecoder)
+                |> Json.Decode.list
+    in
+    Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
 
 
 encodeNoteCommand : Int -> Float -> OscilatorType -> Json.Encode.Value
