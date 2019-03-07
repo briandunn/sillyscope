@@ -69,10 +69,6 @@ encodeCalculateFrequenciesCommand sources =
             )
 
 
-type alias Frequencies =
-    { id : Int, data : Float }
-
-
 noneIfEmpty : (Dict a b -> Cmd c) -> Dict a b -> Cmd c
 noneIfEmpty prt dict =
     if Dict.isEmpty dict then
@@ -111,7 +107,7 @@ update action model =
 
         UpdateFrequency payload ->
             let
-                fold { id, data } dict =
+                fold ( id, data ) dict =
                     if isNaN data then
                         dict
 
@@ -123,7 +119,7 @@ update action model =
                         |> Json.Decode.decodeValue
                             (Json.Decode.list
                                 (Json.Decode.map2
-                                    Frequencies
+                                    Tuple.pair
                                     (Json.Decode.field "id" Json.Decode.int)
                                     (Json.Decode.field "data" Json.Decode.float)
                                 )
