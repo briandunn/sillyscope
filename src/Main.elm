@@ -43,6 +43,7 @@ subscriptions _ =
         [ Browser.Events.onResize (\w h -> WidthHeight w h |> ViewportChange |> Viewport)
         , waveforms UpdateWaveform
         , addAudioSource AddAudioSource
+        , frequencies UpdateFrequency
         ]
 
 
@@ -56,7 +57,18 @@ main =
 
 
 encodeCalculateFrequenciesCommand id waveform =
-    Json.Encode.null
+    Json.Encode.list
+        (\( i, w ) ->
+            Json.Encode.object
+                [ ( "id", Json.Encode.int i )
+                , ( "data", Json.Encode.list Json.Encode.float w )
+                ]
+        )
+        [ ( id, waveform ) ]
+
+
+type alias Frequencies =
+    { id : Int, data : Float }
 
 
 update : Action -> Model -> ( Model, Cmd Action )
@@ -69,24 +81,43 @@ update action model =
             ( { model | oscilatorType = oscilatorType }, Cmd.none )
 
         UpdateWaveform forms ->
-            let
-                updatedModel =
-                    decodeWaveforms forms model
-            in
-            ( updatedModel
-            , if Dict.isEmpty updatedModel.audioSources then
+            ( decodeWaveforms forms model
+            , if Dict.isEmpty model.audioSources then
                 Cmd.none
 
               else
                 Cmd.batch
                     ((model.audioSources |> encodeGetAnalysisCommand |> getWaveforms)
-                        :: (updatedModel.audioSources
+                        :: (model.audioSources
                                 |> Dict.get micId
-                                |> Maybe.map (encodeCalculateFrequenciesCommand micId >> calculateFrequencies >> List.singleton)
+                                |> Maybe.map
+                                    (.waveform
+                                        >> Maybe.map
+                                            (encodeCalculateFrequenciesCommand micId
+                                                >> calculateFrequencies
+                                                >> List.singleton
+                                            )
+                                        >> Maybe.withDefault []
+                                    )
                                 |> Maybe.withDefault []
                            )
                     )
             )
+
+        UpdateFrequency payload ->
+            let
+                decodedFrequencies =
+                    payload
+                        |> Json.Decode.decodeValue
+                            (Json.Decode.list
+                                (Json.Decode.map2
+                                    Frequencies
+                                    (Json.Decode.field "id" Json.Decode.int)
+                                    (Json.Decode.field "data" Json.Decode.float)
+                                )
+                            )
+            in
+            ( model, Cmd.none )
 
         AddAudioSource note ->
             case decodeAudioSource note of

@@ -1,4 +1,4 @@
-module Model exposing (Action(..), Analysis, AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), freq, freqToNoteId, init, micId, note, noteIdToFreq)
+module Model exposing (Action(..), AudioSource, Model, Point, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), freq, freqToNoteId, init, micId, note, noteIdToFreq)
 
 import Browser.Dom exposing (Element, Viewport)
 import Dict exposing (Dict)
@@ -30,16 +30,13 @@ type Action
     | Zoom ZoomAction
     | Viewport ViewportAction
     | UpdateWaveform E.Value
+    | UpdateFrequency E.Value
     | AddAudioSource D.Value
     | SetOscilatorType OscilatorType
 
 
-type alias Analysis =
-    { waveform : Waveform, frequency : Float }
-
-
 type alias AudioSource =
-    { id : Int, node : D.Value, analysis : Maybe Analysis }
+    { id : Int, node : D.Value, waveform : Maybe Waveform, frequency : Maybe Float }
 
 
 type alias Model =

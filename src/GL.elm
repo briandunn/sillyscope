@@ -4,7 +4,7 @@ import Dict exposing (Dict, get)
 import List exposing (foldr, indexedMap, length)
 import Math.Vector2 exposing (vec2)
 import Math.Vector3 exposing (Vec3, vec3)
-import Model exposing (Analysis, AudioSource, micId)
+import Model exposing (AudioSource, micId)
 import Set
 import WebGL exposing (entity, triangleStrip)
 import WebGL.Settings.Blend as Blend
@@ -23,18 +23,18 @@ colorToVec ( r, g, b ) =
     vec3 (r / 255.0) (g / 255.0) (b / 255.0)
 
 
-frequencyMatch : Analysis -> Dict Int AudioSource -> Int
-frequencyMatch micAnalysis audioSources =
+frequencyMatch : Float -> Dict Int AudioSource -> Int
+frequencyMatch micFreq audioSources =
     audioSources
         |> Dict.remove micId
         |> Dict.toList
         |> List.filterMap
-            (\( i, { analysis } ) ->
-                analysis |> Maybe.map (.frequency >> Tuple.pair i)
+            (\( i, source ) ->
+                source.frequency |> Maybe.map (Tuple.pair i)
             )
         |> List.filter
             (\( i, frequency ) ->
-                abs (micAnalysis.frequency - frequency) < 1
+                abs (micFreq - frequency) < 1
             )
         |> List.head
         |> Maybe.map Tuple.first
@@ -43,7 +43,7 @@ frequencyMatch micAnalysis audioSources =
 
 entities colors { audioSources } =
     let
-        getColor : Int -> Analysis -> Vec3
+        getColor : Int -> Float -> Vec3
         getColor id analysis =
             let
                 i =
@@ -56,13 +56,8 @@ entities colors { audioSources } =
             colors |> List.drop i |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
 
         fold : ( Int, AudioSource ) -> List WebGL.Entity -> List WebGL.Entity
-        fold ( id, { analysis } ) list =
-            case analysis of
-                Just a ->
-                    noteToEntity a.waveform (getColor id a) :: list
-
-                Nothing ->
-                    list
+        fold ( id, { frequency, waveform } ) list =
+            Maybe.map2 (\f w -> noteToEntity w (getColor id f) :: list) frequency waveform |> Maybe.withDefault list
     in
     audioSources
         |> Dict.toList

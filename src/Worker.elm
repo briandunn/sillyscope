@@ -26,7 +26,13 @@ encodeFrequencies : Dict Int Float -> Json.Encode.Value
 encodeFrequencies waveforms =
     waveforms
         |> Dict.toList
-        |> Json.Encode.list (\( k, v ) -> Json.Encode.object [ ( "id", Json.Encode.int k ), ( "data", Json.Encode.float v ) ])
+        |> Json.Encode.list
+            (\( k, v ) ->
+                Json.Encode.object
+                    [ ( "id", Json.Encode.int k )
+                    , ( "data", Json.Encode.float v )
+                    ]
+            )
 
 
 detectFrequencies : Dict Int Waveform -> Dict Int Float
@@ -42,7 +48,14 @@ init _ =
 update message _ =
     case message of
         Data payload ->
-            ( Model, payload |> Waveform.decodeDataPayload |> Result.withDefault Dict.empty |> detectFrequencies |> encodeFrequencies |> results )
+            ( Model
+            , payload
+                |> Waveform.decodeDataPayload
+                |> Result.withDefault Dict.empty
+                |> detectFrequencies
+                |> encodeFrequencies
+                |> results
+            )
 
 
 subscriptions _ =

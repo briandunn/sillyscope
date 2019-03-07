@@ -4,7 +4,7 @@ import Array
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
-import Model exposing (Analysis, AudioSource, Model, Waveform)
+import Model exposing (AudioSource, Model, Waveform)
 
 
 type alias WaveformMessage =
@@ -51,18 +51,16 @@ decodeDataPayload payload =
     Json.Decode.decodeValue decoder payload |> Result.map fold
 
 
-updateAnalysis : (Maybe Analysis -> Waveform -> Maybe Analysis) -> Dict Int Waveform -> Dict Int AudioSource -> Dict Int AudioSource
-updateAnalysis fn waveforms sources =
+updateAudioSources : (AudioSource -> b -> AudioSource) -> Dict Int b -> Dict Int AudioSource -> Dict Int AudioSource
+updateAudioSources fn data sources =
     let
-        update : Waveform -> AudioSource -> AudioSource
-        update waveform audioSource =
-            { audioSource | analysis = fn audioSource.analysis waveform }
+        skip _ _ r =
+            r
 
-        fold : ( Int, Waveform ) -> Dict Int AudioSource -> Dict Int AudioSource
-        fold ( id, waveform ) s =
-            Dict.update id (Maybe.map (update waveform)) s
+        both id s d r =
+            Dict.insert id (fn d s) r
     in
-    waveforms |> Dict.toList |> List.foldr fold sources
+    Dict.merge skip both skip data sources sources
 
 
 detectPeaks samples =
@@ -171,17 +169,17 @@ decodeWaveforms forms model =
         trim =
             dropToLocalMinimum >> List.take frameCount
 
-        update analysis waveform =
+        update source waveform =
             let
                 wf =
                     trim waveform
             in
-            Just { waveform = wf, frequency = 0 }
+            { source | waveform = Just wf }
     in
     case decodeDataPayload forms of
         Ok wfs ->
             { model
-                | audioSources = updateAnalysis update wfs model.audioSources
+                | audioSources = updateAudioSources update wfs model.audioSources
             }
 
         Err _ ->

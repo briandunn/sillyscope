@@ -71,8 +71,7 @@ keyboard sources =
         ]
         ((sources
             |> Dict.values
-            |> List.filterMap .analysis
-            |> List.map .frequency
+            |> List.filterMap .frequency
             |> List.head
             |> Maybe.withDefault 0
             |> tunerNeedle

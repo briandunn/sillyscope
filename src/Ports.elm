@@ -29,10 +29,11 @@ decodeAudioSource : Json.Decode.Value -> Result Json.Decode.Error AudioSource
 decodeAudioSource note =
     let
         decoder =
-            Json.Decode.map3
+            Json.Decode.map4
                 AudioSource
                 (Json.Decode.field "id" Json.Decode.int)
                 (Json.Decode.field "node" Json.Decode.value)
+                (Json.Decode.succeed Nothing)
                 (Json.Decode.succeed Nothing)
     in
     note |> Json.Decode.decodeValue decoder
