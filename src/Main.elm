@@ -95,6 +95,8 @@ update action model =
                     |> Dict.filter
                         (\id { frequency } ->
                             case frequency of
+                                -- use a trinary so we dont keep asking while it's being calculated?
+                                -- have to update the model when we do request the freq.
                                 Nothing ->
                                     True
 

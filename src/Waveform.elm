@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectFrequency, detectPeaks, samplesPerRepetition, updateAudioSources)
+module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, decodeWaveforms, detectFrequency, detectPeaks, dropToLocalMinimum, samplesPerRepetition, updateAudioSources)
 
 import Array
 import Dict exposing (Dict)
@@ -40,14 +40,8 @@ decodeDataPayload payload =
                 (Json.Decode.field "id" Json.Decode.int)
                 (Json.Decode.field "data" (Json.Decode.list Json.Decode.float))
                 |> Json.Decode.list
-
-        results =
-            Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
-
-        _ =
-            results |> Result.map (Dict.values >> List.map List.length) >> Debug.log "decoded samples"
     in
-    results
+    Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
 
 
 updateAudioSources : (AudioSource -> b -> AudioSource) -> Dict Int b -> Dict Int AudioSource -> Dict Int AudioSource
@@ -155,26 +149,8 @@ detectFrequency sampleRate waveform =
 decodeWaveforms : Json.Decode.Value -> Model -> Model
 decodeWaveforms forms model =
     let
-        frameCount : Int
-        frameCount =
-            case model.wrapperElement of
-                Nothing ->
-                    0
-
-                Just element ->
-                    round (element.element.width * model.zoom)
-
-        trim : Waveform -> Waveform
-        trim =
-            dropToLocalMinimum >> List.take frameCount
-
         update source waveform =
-            let
-                wf =
-                    -- trim waveform
-                    waveform
-            in
-            { source | waveform = Just wf }
+            { source | waveform = Just waveform }
     in
     case decodeDataPayload forms of
         Ok wfs ->

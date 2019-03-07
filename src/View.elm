@@ -13,7 +13,29 @@ import PathDefinition exposing (PathCommand(..))
 import Set exposing (Set)
 import Svg exposing (path, svg)
 import Svg.Attributes exposing (d, height, stroke, viewBox, width)
+import Waveform
 import WebGL
+
+
+frameCount { wrapperElement, zoom } =
+    case wrapperElement of
+        Nothing ->
+            0
+
+        Just element ->
+            round (element.element.width * zoom)
+
+
+trim model =
+    Waveform.dropToLocalMinimum >> List.take (frameCount model)
+
+
+trimWaveforms : Model -> Model
+trimWaveforms model =
+    { model
+        | audioSources =
+            model.audioSources |> Dict.map (\_ source -> { source | waveform = Maybe.map (trim model) source.waveform })
+    }
 
 
 colors =
@@ -173,7 +195,7 @@ view model =
                 [ width (String.fromFloat dims.scopeWidth)
                 , height (String.fromFloat dims.sceneHeight)
                 ]
-                (GL.entities colors model)
+                (GL.entities colors (trimWaveforms model))
             ]
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
