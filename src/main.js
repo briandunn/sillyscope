@@ -6,6 +6,7 @@ function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
 
+  analyser.fftSize = 1 << 15;
   gain.gain.value = 0;
   source.connect(gain);
   gain.connect(context.destination);
@@ -52,6 +53,7 @@ const app = Elm.Main.init({
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
   osc.frequency.value = frequency;
+  console.log({ frequency });
   const { gain, analyser, ...node } = buildNode(osc);
 
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);

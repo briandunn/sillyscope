@@ -7,10 +7,6 @@ import Json.Encode
 import Model exposing (AudioSource, Model, Waveform)
 
 
-type alias WaveformMessage =
-    { id : Int, data : Waveform }
-
-
 dropWhileFirstTwo test list =
     case list of
         first :: second :: tail ->
@@ -40,15 +36,18 @@ decodeDataPayload payload =
     let
         decoder =
             Json.Decode.map2
-                WaveformMessage
+                Tuple.pair
                 (Json.Decode.field "id" Json.Decode.int)
                 (Json.Decode.field "data" (Json.Decode.list Json.Decode.float))
                 |> Json.Decode.list
 
-        fold messages =
-            messages |> List.map (\{ id, data } -> ( id, data )) |> Dict.fromList
+        results =
+            Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
+
+        _ =
+            results |> Result.map (Dict.values >> List.map List.length) >> Debug.log "decoded samples"
     in
-    Json.Decode.decodeValue decoder payload |> Result.map fold
+    results
 
 
 updateAudioSources : (AudioSource -> b -> AudioSource) -> Dict Int b -> Dict Int AudioSource -> Dict Int AudioSource
@@ -172,7 +171,8 @@ decodeWaveforms forms model =
         update source waveform =
             let
                 wf =
-                    trim waveform
+                    -- trim waveform
+                    waveform
             in
             { source | waveform = Just wf }
     in
