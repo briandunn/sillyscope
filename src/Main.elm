@@ -90,7 +90,16 @@ update action model =
         UpdateWaveform forms ->
             let
                 up a w =
-                    { a | waveform = Just w, frequency = Just 0 }
+                    { a
+                        | waveform = Just w
+                        , frequency =
+                            case a.frequency of
+                                Nothing ->
+                                    Just -1
+
+                                x ->
+                                    x
+                    }
 
                 updatedAudioSources =
                     forms

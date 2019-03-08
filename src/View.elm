@@ -57,10 +57,13 @@ toCSSColor ( r, g, b ) =
     "rgb(" ++ ([ r, g, b ] |> List.map String.fromFloat |> String.join ",") ++ ")"
 
 
-tunerNeedle freq =
+tunerNeedle keyCount freq =
     let
+        keys =
+            toFloat keyCount
+
         toPercent f =
-            String.fromFloat ((((12 - f) / 12) - (1 / 24)) * 100) ++ "%"
+            String.fromFloat ((((keys - f) / keys) - (1 / 24)) * 100) ++ "%"
 
         needleTop =
             freq |> freqToNoteId |> toPercent
@@ -94,11 +97,10 @@ keyboard sources =
         ((sources
             |> Dict.values
             |> List.filterMap .frequency
-            |> List.head
-            |> Maybe.withDefault 0
-            |> tunerNeedle
+            |> List.filter ((<) 0)
+            |> List.map (tunerNeedle (List.length colors))
          )
-            :: (colors
+            ++ (colors
                     |> List.indexedMap
                         (\i color ->
                             div
