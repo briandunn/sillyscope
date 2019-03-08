@@ -55,13 +55,13 @@ micId =
 
 noteIdToFreq : Int -> Float
 noteIdToFreq =
-    toFloat >> (+) 40 >> freq
+    toFloat >> (+) 40 >> Debug.log "midi number out" >> freq
 
 
 freqToNoteId f =
     let
         n =
-            note f - 4
+            (note f |> Debug.log "midi number in") - 4
     in
     n - toFloat (12 * floor (n / 12))
 

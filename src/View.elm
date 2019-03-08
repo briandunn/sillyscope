@@ -32,9 +32,16 @@ trim model =
 
 trimWaveforms : Model -> Model
 trimWaveforms model =
+    let
+        updateSource _ source =
+            { source
+                | waveform = Maybe.map (trim model) source.waveform
+                , frequency = Maybe.map freqToNoteId source.frequency
+            }
+    in
     { model
         | audioSources =
-            model.audioSources |> Dict.map (\_ source -> { source | waveform = Maybe.map (trim model) source.waveform })
+            model.audioSources |> Dict.map updateSource
     }
 
 
@@ -66,15 +73,17 @@ tunerNeedle keyCount freq =
             String.fromFloat ((((keys - f) / keys) - (1 / 24)) * 100) ++ "%"
 
         needleTop =
-            freq |> freqToNoteId |> toPercent
+            freq |> toPercent
     in
     div
         [ style "position" "absolute"
-        , style "width" "100%"
-        , style "height" "1%"
+        , style "background-color" "rgba(0,0,0,0.5)"
+        , style "border" "1px solid red"
+        , style "margin-top" "-1%"
+        , style "height" "2%"
         , style "top" needleTop
-        , style "background-color" "black"
         , style "transition" "top 0.3s"
+        , style "width" "100%"
         ]
         []
 
@@ -169,9 +178,16 @@ buttonSvg selected attrs children =
         children
 
 
+centNeedle sources =
+    []
+
+
 view : Model -> Html.Html Action
-view model =
+view model_ =
     let
+        model =
+            trimWaveforms model_
+
         dims =
             case model.wrapperElement of
                 Nothing ->
@@ -193,12 +209,14 @@ view model =
             ([ style "flex" "4", style "cursor" "ew-resize", id "scope-wrapper", style "height" "100%" ]
                 ++ zoomEvents
             )
-            [ WebGL.toHtml
-                [ width (String.fromFloat dims.scopeWidth)
-                , height (String.fromFloat dims.sceneHeight)
-                ]
-                (GL.entities colors (trimWaveforms model))
-            ]
+            (centNeedle model.audioSources
+                ++ [ WebGL.toHtml
+                        [ width (String.fromFloat dims.scopeWidth)
+                        , height (String.fromFloat dims.sceneHeight)
+                        ]
+                        (GL.entities colors model)
+                   ]
+            )
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
             (buttonSvg

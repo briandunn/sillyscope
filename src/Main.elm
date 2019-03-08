@@ -117,8 +117,6 @@ update action model =
                     |> Dict.filter
                         (\_ { frequency } ->
                             case frequency of
-                                -- use a trinary so we dont keep asking while it's being calculated?
-                                -- have to update the model when we do request the freq.
                                 Nothing ->
                                     True
 
@@ -143,7 +141,7 @@ update action model =
                                 Nothing
 
                             else
-                                Just (toFloat model.sampleRate / d) |> Debug.log "freq"
+                                Just (toFloat model.sampleRate / d)
                     }
             in
             ( { model | audioSources = Model.updateAudioSources u model.audioSources decodedFrequencies }
