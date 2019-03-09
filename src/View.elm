@@ -64,28 +64,43 @@ toCSSColor ( r, g, b ) =
     "rgb(" ++ ([ r, g, b ] |> List.map String.fromFloat |> String.join ",") ++ ")"
 
 
+needle note cent =
+    let
+        toPercent f =
+            String.fromFloat (f * 100) ++ "%"
+    in
+    div
+        [ style "position" "absolute"
+        , style "background-color" "rgba(0,0,0,0.3)"
+        , style "height" "1%"
+        , style "top" (toPercent note)
+        , style "transition" "top 0.3s"
+        , style "width" "100%"
+        ]
+        [ div
+            [ style "position" "absolute"
+            , style "width" "5%"
+            , style "transition" "left 0.3s"
+            , style "left" (toPercent cent)
+            , style "height" "100%"
+            , style "background-color" purple
+            ]
+            []
+        ]
+
+
 tunerNeedle keyCount freq =
     let
         keys =
             toFloat keyCount
 
-        toPercent f =
-            String.fromFloat ((((keys - f) / keys) - (1 / 24)) * 100) ++ "%"
+        note =
+            ((keys - freq) / keys) - (0.5 / keys)
 
-        needleTop =
-            freq |> toPercent
+        cent =
+            (freq - toFloat (round freq)) + 0.5
     in
-    div
-        [ style "position" "absolute"
-        , style "background-color" "rgba(0,0,0,0.5)"
-        , style "border" "1px solid red"
-        , style "margin-top" "-1%"
-        , style "height" "2%"
-        , style "top" needleTop
-        , style "transition" "top 0.3s"
-        , style "width" "100%"
-        ]
-        []
+    needle note cent
 
 
 keyboard : Dict Int AudioSource -> Html Action
@@ -178,10 +193,6 @@ buttonSvg selected attrs children =
         children
 
 
-centNeedle sources =
-    []
-
-
 view : Model -> Html.Html Action
 view model_ =
     let
@@ -206,17 +217,15 @@ view model_ =
         ]
         [ keyboard model.audioSources
         , div
-            ([ style "flex" "4", style "cursor" "ew-resize", id "scope-wrapper", style "height" "100%" ]
+            ([ style "flex" "4", style "cursor" "ew-resize", id "scope-wrapper", style "height" "100%", style "position" "relative" ]
                 ++ zoomEvents
             )
-            (centNeedle model.audioSources
-                ++ [ WebGL.toHtml
-                        [ width (String.fromFloat dims.scopeWidth)
-                        , height (String.fromFloat dims.sceneHeight)
-                        ]
-                        (GL.entities colors model)
-                   ]
-            )
+            [ WebGL.toHtml
+                [ width (String.fromFloat dims.scopeWidth)
+                , height (String.fromFloat dims.sceneHeight)
+                ]
+                (GL.entities colors model)
+            ]
         , div
             [ style "flex" "1", style "flex-direction" "column", style "justify-content" "space-evenly", style "display" "flex" ]
             (buttonSvg

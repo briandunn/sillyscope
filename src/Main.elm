@@ -58,6 +58,7 @@ main =
 
 encodeCalculateFrequenciesCommand sources =
     sources
+        |> Dict.filter (\id _ -> id == micId)
         |> Dict.toList
         |> List.filterMap (Tuple.second >> (\source -> Maybe.map2 Tuple.pair (Just source.id) source.waveform))
         |> Json.Encode.list

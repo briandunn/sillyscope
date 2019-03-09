@@ -23,22 +23,8 @@ colorToVec ( r, g, b ) =
     vec3 (r / 255.0) (g / 255.0) (b / 255.0)
 
 
-frequencyMatch : Float -> Dict Int AudioSource -> Int
-frequencyMatch micFreq audioSources =
-    audioSources
-        |> Dict.remove micId
-        |> Dict.toList
-        |> List.filterMap
-            (\( i, source ) ->
-                source.frequency |> Maybe.map (Tuple.pair i)
-            )
-        |> List.filter
-            (\( i, frequency ) ->
-                abs (micFreq - frequency) < 1
-            )
-        |> List.head
-        |> Maybe.map Tuple.first
-        |> Maybe.withDefault micId
+toColor i colors =
+    colors |> List.drop (round i) |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
 
 
 entities colors { audioSources } =
@@ -48,12 +34,12 @@ entities colors { audioSources } =
             let
                 i =
                     if id == micId then
-                        frequencyMatch (freq |> Maybe.withDefault 0) audioSources
+                        freq |> Maybe.withDefault 0
 
                     else
-                        id
+                        toFloat id
             in
-            colors |> List.drop i |> List.head |> Maybe.withDefault ( 0, 0, 0 ) |> colorToVec
+            toColor i colors
 
         fold : ( Int, AudioSource ) -> List WebGL.Entity -> List WebGL.Entity
         fold ( id, { frequency, waveform } ) list =
