@@ -5,6 +5,7 @@ import Json.Decode
 import Json.Encode
 import Model exposing (Waveform)
 import Platform
+import Ports
 import Waveform
 
 
@@ -50,7 +51,7 @@ update message _ =
         Data payload ->
             ( Model
             , payload
-                |> Waveform.decodeDataPayload
+                |> Ports.decodeToDict (Json.Decode.list Json.Decode.float)
                 |> Result.withDefault Dict.empty
                 |> detectFrequencies
                 |> encodeFrequencies

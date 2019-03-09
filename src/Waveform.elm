@@ -1,4 +1,4 @@
-module Waveform exposing (autoCorrelate, averageDistance, decodeDataPayload, detectFrequency, detectPeaks, dropToLocalMinimum, samplesPerRepetition)
+module Waveform exposing (autoCorrelate, averageDistance, detectFrequency, detectPeaks, dropToLocalMinimum, normalize, samplesPerRepetition)
 
 import Array
 import Dict exposing (Dict)
@@ -29,23 +29,6 @@ dropToLocalMinimum values =
         |> dropWhileFirstTwo (\a b -> (a > 0 && b > 0) || (a <= 0 && b <= 0))
         |> List.drop 1
         |> dropWhileFirstTwo (\a b -> a > 0 && b > 0)
-
-
-decodeToDict : Json.Decode.Decoder a -> Json.Decode.Value -> Result Json.Decode.Error (Dict Int a)
-decodeToDict dataDecoder payload =
-    let
-        decoder =
-            Json.Decode.map2
-                Tuple.pair
-                (Json.Decode.field "id" Json.Decode.int)
-                (Json.Decode.field "data" dataDecoder)
-                |> Json.Decode.list
-    in
-    Json.Decode.decodeValue decoder payload |> Result.map Dict.fromList
-
-
-decodeDataPayload =
-    decodeToDict (Json.Decode.list Json.Decode.float)
 
 
 detectPeaks samples =
