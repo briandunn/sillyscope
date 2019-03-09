@@ -6,7 +6,7 @@ function buildNode(source) {
   const gain = context.createGain();
   const analyser = context.createAnalyser();
 
-  analyser.fftSize = 1 << 10;
+  analyser.fftSize = 1 << 12;
   gain.gain.value = 0;
   source.connect(gain);
   gain.connect(context.destination);
