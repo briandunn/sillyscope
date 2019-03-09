@@ -53,7 +53,6 @@ const app = Elm.Main.init({
 function notePress({ id, frequency, attack, type }) {
   const osc = context.createOscillator();
   osc.frequency.value = frequency;
-  console.log({ frequency });
   const { gain, analyser, ...node } = buildNode(osc);
 
   gain.gain.linearRampToValueAtTime(0.5, context.currentTime + attack);
