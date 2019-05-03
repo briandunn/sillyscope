@@ -1,3 +1,4 @@
 description: "A Twelve-tone equal temperament visualization"
 name: sillyscope
+cover_image: https://raw.githubusercontent.com/briandunn/sillyscope/master/sillyscope.gif
 url: https://briandunn.github.io/sillyscope/
