@@ -1,9 +1,12 @@
-[Sillyscope](https://briandunn.github.io/sillyscope/)
------------------------------------------------------
+## [Sillyscope](https://briandunn.github.io/sillyscope/)
 
 An oscilloscope that draws each of the [12 tones](https://en.wikipedia.org/wiki/Equal_temperament#Twelve-tone_equal_temperament) as a distinct color.
 
 Fun for visualizing the interplay of the frequencies of a chord.
+
+## microphone
+
+Sillyscope tries to guess the pitch of an incoming microphone signal. Sing into the mic and try to center the black dot on the keyboard.
 
 Colors chosen with [colorbox](http://www.colorbox.io/), implemented in [elm](https://elm-lang.org/).
 
