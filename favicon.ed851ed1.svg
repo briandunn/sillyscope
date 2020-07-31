@@ -1,0 +1,16 @@
+<svg width="50" viewBox="0 -1 2 2"
+  xmlns="http://www.w3.org/2000/svg">
+  <style>
+    svg {
+      background-color: rgb(252, 190, 237);
+    }
+
+    path {
+      fill: none;
+      stroke: rgb(105, 55, 216);
+      stroke-opacity: 0.5;
+      stroke-width: 0.2;
+    }
+  </style>
+  <path d="M 0,0 Q 0.5,-1.5 1,0 Q 1.5,1.5 2,0"></path>
+</svg>
