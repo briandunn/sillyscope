@@ -7,12 +7,12 @@ import Html exposing (Attribute, Html, div)
 import Html.Attributes exposing (id, style)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Json
-import Model exposing (Action(..), AudioSource, Model, Point, Waveform, ZoomAction(..), freqToNoteId, micId)
+import Model exposing (Action(..), AudioSource, Model, Point, ZoomAction(..), freqToNoteId, micId)
 import OscilatorType exposing (OscilatorType(..))
 import PathDefinition exposing (PathCommand(..))
 import Set exposing (Set)
 import Svg exposing (path, svg)
-import Svg.Attributes exposing (d, height, stroke, viewBox, width)
+import Svg.Attributes exposing (d, height, viewBox, width)
 import Waveform
 import WebGL
 
@@ -45,11 +45,13 @@ trimWaveforms model =
     }
 
 
+colors : List (number, number, number)
 colors =
     [ ( 252, 190, 237 ), ( 61, 52, 4 ), ( 55, 94, 7 ), ( 11, 126, 24 ), ( 18, 155, 124 ), ( 27, 121, 180 ), ( 39, 55, 200 ), ( 105, 55, 216 ), ( 172, 75, 229 ), ( 221, 99, 238 ), ( 245, 128, 240 ), ( 250, 159, 234 ), ( 252, 190, 237 ) ]
         |> List.reverse
 
 
+selectedAttribute : Bool -> Attribute msg
 selectedAttribute test =
     style "box-shadow"
         (if test then

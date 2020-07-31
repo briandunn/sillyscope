@@ -6,11 +6,10 @@ import Browser.Events
 import Dict exposing (Dict)
 import Json.Decode
 import Json.Encode
-import Model exposing (Action(..), AudioSource, Model, ViewportAction(..), Waveform, WidthHeight, ZoomAction(..), init, micId, noteIdToFreq)
+import Model exposing (Action(..), Model, ViewportAction(..), WidthHeight, ZoomAction(..), init, micId, noteIdToFreq)
 import Ports exposing (decodeAudioSource, decodeToDict, encodeGetAnalysisCommand, encodeNoteCommand, encodeReleaseCommand)
 import Task exposing (attempt)
 import View exposing (view)
-import Waveform
 
 
 port activateMic : Json.Decode.Value -> Cmd msg
@@ -55,7 +54,7 @@ main =
         , subscriptions = subscriptions
         }
 
-
+encodeCalculateFrequenciesCommand : Dict number Model.AudioSource -> Json.Encode.Value
 encodeCalculateFrequenciesCommand sources =
     sources
         |> Dict.filter (\id _ -> id == micId)
