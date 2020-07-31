@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+
+      gtag('config', process.env.GOOGLE_ANALYTICS_TRACKING_ID);
+    </script>
+
     <script defer src="main.js"></script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>sillyscope</title>
